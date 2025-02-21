@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<h3>Interesttarget Polyfill Test</h3>
+<ul>
+  <li><p><label>
+    <select id="polyfill_select">
+      <option id="option_use_polyfill">Test using the polyfill</option>
+      <option id="option_use_min_polyfill">Test using the minified polyfill</option>
+      <option id="option_use_native">Test the native feature</option>
+    </select>
+  <li><p>Interesttarget is <u id="native_support"></u> in this browser.</p>
+  <li><p>This test will test the <u id="what_to_test"></u>.</p>
+  <li><p>To cleanly re-test different cases (removing all polyfill traces), reload the page.</p></li>
+  <li><p><h3 style="display:inline">Note!</h3> This is a *manual* test - you must follow the instructions carefully while testing.</p></li>
+</ul>
+<button id="go">Run the test</button>
+
+<div id="targets">
+  <a href=foo id=unrelated class="hide hovertarget">Unrelated</a>
+  <a interesttarget=already_present_target href=foo id=already_present class="hide hovertarget">Link</a></div>
+  <div popover id="already_present_target" class="hovertarget">
+    Popover
+  </div>
+</div>
+
+<div id=results class="hide">
+  <h3>Results:</h3>
+  <h3 id="summary"></h3>
+  <table id=log></table>
+</div>
+
+<style>
+  .pass {
+    background-color: lightgreen;
+  }
+  .fail {
+    background-color: red;
+  }
+  html,body {
+    width: 100%;
+  }
+  .hovertarget {
+    width:300px;
+    height:100px;
+    border: 1px solid red;
+  }
+  .hovertarget:not([popover]) {
+    display:block;
+  }
+  .hide {
+    visibility:hidden;
+  }
+</style>
+
+<script>
+const nativelySupported = HTMLButtonElement.prototype.hasOwnProperty("interestTargetElement");
+const polyfillSelect = document.querySelector('#polyfill_select');
+const goButton = document.querySelector('#go');
+const whatToTest = document.querySelector('#what_to_test');
+if (!nativelySupported) {
+  const useNativeOption = document.querySelector('#option_use_native');
+  useNativeOption.textContent = 'Test the native feature (Unavailable)';
+  useNativeOption.disabled = true;
+}
+document.querySelector('#native_support').textContent = nativelySupported ? 'Supported' : 'NOT supported';
+polyfillSelect.onchange = () => updateWhatToTest();
+updateWhatToTest();
+function updateWhatToTest() {
+  if (document.querySelector('#option_use_native').selected) {
+    whatToTest.textContent = 'NATIVE IMPLEMENTATION';
+  } else if (document.querySelector('#option_use_polyfill').selected) {
+    whatToTest.textContent = 'POLYFILL';
+  } else if (document.querySelector('#option_use_min_polyfill').selected) {
+    whatToTest.textContent = 'POLYFILL (minified)';
+  }
+}
+goButton.onclick = async () => {
+  goButton.disabled = true;
+  polyfillSelect.disabled = true;
+  const normalPolyfill = document.querySelector('#option_use_polyfill').selected;
+  const minPolyfill = document.querySelector('#option_use_min_polyfill').selected;
+  if (normalPolyfill || minPolyfill) {
+    // This will tell the polyfill to load even if natively supported:
+    window.interesttargetUsePolyfillAlways = true;
+    const polyfill = document.createElement('script');
+    polyfill.src = "../src/interesttarget." + (minPolyfill ? "min.js" : "js")
+    const loaded = new Promise(resolve => polyfill.onload = resolve);
+    document.body.appendChild(polyfill);
+    await loaded;
+  }
+  document.querySelector('#results').classList.remove('hide');
+  // Run the tests
+  testHarness();
+};
+
+function getDescription(n) {
+  if (typeof n !== 'object' || n === null) {
+    return String(n);
+  } else if (n.nodeType === 3) {
+    return `Text node ${n.textContent}`;
+  } else if (n.hasAttribute('id')) {
+    return n.id;
+  } else {
+    return n.outerHTML;
+  }
+}
+function addResult(success,msg) {
+  const newRow = document.createElement('tr');
+  newRow.innerHTML = `<td class=${success ? 'pass' : 'fail'}>${success ? 'PASS' : 'FAIL'}</td><td>${msg}</td>`;
+  document.getElementById('log').appendChild(newRow);
+}
+window.onerror = function(message, source, lineno, colno, error) {
+  addResult(false,`Uncaught exception: ${message} at line ${lineno} in file ${source}`);
+};
+
+let any_failures = false;
+function assert_true(val,msg,logSuccess) {
+  if (!val) {
+    console.log('=====> FAIL! ',msg);
+    any_failures = true;
+    addResult(false,msg);
+  } else if (logSuccess) {
+    addResult(true,msg);
+  }
+}
+function assert_false(val,msg,logSuccess) {
+  return assert_true(!val,msg,logSuccess);
+}
+
+function assert_array_equals(actual, expected, description, logSuccess) {
+  if (!(typeof actual === "object" && actual !== null && "length" in actual)) {
+    assert_true(false, `${description}, value is ${actual}, expected array`);
+  }
+  if (actual.length !== expected.length) {
+    assert_true(false,`${description}, lengths differ, expected array ${expected} length ${expected.length}, got ${actual} length ${actual.length}`);
+  }
+  for (var i = 0; i < actual.length; i++) {
+    if (actual.hasOwnProperty(i) !== expected.hasOwnProperty(i)) {
+      assert_true(false,`${description}, expected property ${i} to be ${expected[i]} but was ${actual[i]} (expected array ${expected} got ${actual})`);
+    }
+    if (expected[i] !== actual[i]) {
+      assert_true(false,`${description}, expected property ${i} to be ${expected[i]} but got ${actual[i]} (expected array ${expected} got ${actual})`);
+    }
+  }
+  assert_true(true,description,logSuccess);
+}
+
+const hoverMeText = 'HOVER ME WITH THE MOUSE';
+const keepHoveredText = 'STAY HOVERING ON THIS';
+const hoverTimeMilliseconds = 500;
+async function waitForHover(element,timeMilliseconds) {
+  let done = false;
+  do {
+    element.innerText = hoverMeText;
+    await new Promise(resolve => element.addEventListener('mouseenter',resolve, {once:true}));
+    element.innerText = keepHoveredText;
+    const timeout = new Promise(resolve => setTimeout(() => {
+      done=true;
+      resolve();
+    },timeMilliseconds));
+    const mouseLeft = new Promise(resolve => element.addEventListener('mouseleave',resolve, {once:true}));
+    await Promise.race([timeout,mouseLeft]);
+  } while (!done);
+}
+
+async function testOne(invoker, target, description) {
+  assert_true(true,'---' + description,true);
+  let events = [];
+  target.addEventListener('interest',() => events.push('interest'));
+  target.addEventListener('loseinterest',() => events.push('loseinterest'));
+  assert_false(target.matches(':popover-open'),'popover should start closed',true);
+  invoker.style.setProperty('--interest-target-show-delay',hoverTimeMilliseconds + 'ms');
+  invoker.style.setProperty('--interest-target-hide-delay',hoverTimeMilliseconds + 'ms');
+  invoker.classList.remove('hide');
+  assert_array_equals(events,[],'init',true);
+  await waitForHover(invoker,hoverTimeMilliseconds);
+  assert_true(target.matches(':popover-open'),'popover should be invoked by hovering',true);
+  assert_array_equals(events,['interest'],'interest event fired',true);
+  invoker.classList.add('hide');
+  unrelated.classList.remove('hide');
+  await waitForHover(unrelated,hoverTimeMilliseconds);
+  assert_false(target.matches(':popover-open'),'popover should be hidden by de-hovering',true);
+  assert_array_equals(events,['interest','loseinterest'],'loseinterest event fired',true);
+  invoker.classList.add('hide');
+  unrelated.classList.add('hide');
+}
+
+async function testHarness() {
+  await testOne(already_present,already_present_target,'Pre-existing elements');
+
+  // Dynamically add elements:
+  const targets = document.getElementById('targets');
+  const dynamic_invoker = document.createElement('a');
+  dynamic_invoker.href = 'foo';
+  dynamic_invoker.setAttribute('interesttarget','dynamic_target');
+  dynamic_invoker.classList='hide hovertarget';
+  const dynamic_target = document.createElement('div');
+  dynamic_target.popover = 'auto';
+  dynamic_target.id = 'dynamic_target';
+  dynamic_target.classList = 'hovertarget';
+  targets.append(dynamic_invoker,dynamic_target);
+  await testOne(dynamic_invoker,dynamic_target,'Dynamically-added elements');
+
+  // Test complete
+  targets.style.display = 'none';
+  const summary = document.getElementById('summary');
+  summary.innerText = any_failures ? 'FAILURE' : 'PASS';
+  summary.classList = any_failures ? 'fail' : 'pass';
+}
+
+</script>
