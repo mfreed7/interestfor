@@ -93,17 +93,6 @@ goButton.onclick = async () => {
   testHarness();
 };
 
-function getDescription(n) {
-  if (typeof n !== 'object' || n === null) {
-    return String(n);
-  } else if (n.nodeType === 3) {
-    return `Text node ${n.textContent}`;
-  } else if (n.hasAttribute('id')) {
-    return n.id;
-  } else {
-    return n.outerHTML;
-  }
-}
 function addResult(success,msg) {
   const newRow = document.createElement('tr');
   newRow.innerHTML = `<td class=${success ? 'pass' : 'fail'}>${success ? 'PASS' : 'FAIL'}</td><td>${msg}</td>`;
@@ -145,15 +134,13 @@ function assert_array_equals(actual, expected, description, logSuccess) {
   assert_true(true,description,logSuccess);
 }
 
-const hoverMeText = 'HOVER ME WITH THE MOUSE';
-const keepHoveredText = 'STAY HOVERING ON THIS';
 const hoverTimeMilliseconds = 500;
 async function waitForHover(element,timeMilliseconds) {
   let done = false;
   do {
-    element.innerText = hoverMeText;
+    element.innerText = 'HOVER ME WITH THE MOUSE';
     await new Promise(resolve => element.addEventListener('mouseenter',resolve, {once:true}));
-    element.innerText = keepHoveredText;
+    element.innerText = 'STAY HOVERING ON THIS';
     const timeout = new Promise(resolve => setTimeout(() => {
       done=true;
       resolve();

@@ -12,7 +12,6 @@
   const interestEventName = 'interest';
   const loseInterestEventName = 'loseinterest';
 
-
   // Only run once
   if (window.interesttargetPolyfillInstalled) {
     return;
