@@ -10,7 +10,7 @@ See the explainer for all of the details for the "real" feature:
 To use this polyfill, simply load it:
 
 ```html
-<script src="interesttarget.min.js"></script>
+<script src="interesttarget.min.js" async></script>
 
 <a interesttarget=foo href=bar>Link</a>
 <div popover id=foo>Popover</div>
