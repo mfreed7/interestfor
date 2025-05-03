@@ -9,8 +9,9 @@
 
 (function() {
   const attributeName = 'interesttarget';
-  const interestEventName = 'interest';
-  const loseInterestEventName = 'loseinterest';
+  const showDelayProp = '--interest-target-show-delay';
+  const hideDelayProp = '--interest-target-hide-delay';
+  const polyfillDataField = '__interesttargetData';
 
   // Only run once
   if (window.interesttargetPolyfillInstalled) {
@@ -23,184 +24,208 @@
     return;
   }
   if (nativeFeatureSupported && window.interesttargetUsePolyfillAlways) {
-    // "Break" the existing feature, so the polyfill takes effect.
-    const cancel = (e) => {
-      if (!e.isTrusted) {
-        return;
-      }
+    // Cancel native events to force polyfill
+    const cancelEvent = e => {
+      if (!e.isTrusted) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-    }
-    document.body.addEventListener(interestEventName,cancel,{capture:true});
-    document.body.addEventListener(loseInterestEventName,cancel,{capture:true});
+    };
+    document.body.addEventListener('interest', cancelEvent, {capture:true});
+    document.body.addEventListener('loseinterest', cancelEvent, {capture:true});
   }
 
-  function assert_true(cond,message) {
-    message = message ?? "Assertion failed";
-    if (!cond) {
-      throw(message);
-    }
-  }
-  function assert_false(cond,message) {
-    assert_true(!cond,message);
-  }
-
-  window.InterestEvent = class extends CustomEvent {}
-
-  function newInterestEvent(type) {
-    return new InterestEvent(type, {
-      bubbles: false,
-      cancelable: true,
-      composed: true,
-    });
-  }
-
-  const polyfillDataField = 'polyfill_data';
-  function interestGained(element) {
-    const target = element[polyfillDataField].target;
-    if (!target.dispatchEvent(newInterestEvent(interestEventName))) {
-      return;
-    }
-    element[polyfillDataField].has_interest = true;
-    try {
-      target.showPopover();
-    } catch {};
-  }
-
-  function interestLost(element) {
-    const target = element[polyfillDataField].target;
-    if (!target.dispatchEvent(newInterestEvent(loseInterestEventName))) {
-      return;
-    }
-    element[polyfillDataField].has_interest = false;
-    try {
-      target.hidePopover();
-    } catch {};
-  }
-
-  function showInterestAfterDelay(element, delaySeconds) {
-    clearTimeout(element[polyfillDataField].hideInterestTask);
-    element[polyfillDataField].showInterestTask = setTimeout(() => {
-      interestGained(element);
-    }, delaySeconds*1000);
-  }
-
-  function loseInterestAfterDelay(element, delaySeconds) {
-    clearTimeout(element[polyfillDataField].showInterestTask);
-    element[polyfillDataField].hideInterestTask = setTimeout(() => {
-      interestLost(element);
-    }, delaySeconds*1000);
-  }
-
-  function addEventHandlers(element) {
-    assert_true(element.hasAttribute(attributeName));
-    const targetIdref = element.getAttribute(attributeName);
-    assert_true(targetIdref);
-    assert_false(element.hasOwnProperty(polyfillDataField));
-    element[polyfillDataField] = {};
-    element[polyfillDataField].target = document.getElementById(targetIdref);
-    if (!element[polyfillDataField].target) {
-      return;
-    }
-    const controller = new AbortController();
-    element[polyfillDataField].signal = controller.signal;
-    element.addEventListener("mouseenter", () => {
-      showInterestAfterDelay(element,
-          getComputedStyle(element).getPropertyValue('--interest-target-show-delay'));
-    },{signal:controller.signal});
-    element.addEventListener("mouseleave", () => {
-      loseInterestAfterDelay(element,
-          getComputedStyle(element).getPropertyValue('--interest-target-hide-delay'));
-    },{signal:controller.signal});
-    // Handle keyboard focus events
-    element.addEventListener("focus", () => {
-      showInterestAfterDelay(element,
-          getComputedStyle(element).getPropertyValue('--interest-target-show-delay'));
-    },{signal:controller.signal});
-    element.addEventListener("blur", () => {
-      loseInterestAfterDelay(element,
-          getComputedStyle(element).getPropertyValue('--interest-target-hide-delay'));
-    },{signal:controller.signal});
-    element.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowUp" && event.altKey) {
-        interestGained(element);
-      }
-      if (event.key === "Escape") {
-        interestLost(element);
-      }
-    },{signal:controller.signal});
-  }
-  function removeEventHandlers(element) {
-    element[polyfillDataField]?.signal?.abort();
-  }
-
+  // Custom CSS properties
   function registerCustomProperties() {
     const style = document.createElement('style');
-    style.innerHTML = `
-      @property --interest-target-hide-delay {
+    style.textContent = `
+      @property ${showDelayProp} {
         syntax: "<time>";
         inherits: false;
         initial-value: 0.5s;
       }
-      @property --interest-target-show-delay {
+      @property ${hideDelayProp} {
         syntax: "<time>";
         inherits: false;
         initial-value: 0.5s;
       }
     `;
     document.head.appendChild(style);
-    document[polyfillDataField].globalStylesheet = style;
-  }
-  function unregisterCustomProperties() {
-    document[polyfillDataField].globalStylesheet?.remove();
-    delete document[polyfillDataField].globalStylesheet;
+    document[polyfillDataField] = { globalPropsStyle: style };
   }
 
-  function enableInteresttargetPolyfill() {
-    assert_true(document[polyfillDataField] === undefined);
-    document[polyfillDataField] = {};
-    registerCustomProperties();
-    document[polyfillDataField].observer = new MutationObserver((mutations) => {
-      // On any DOM mutations, add or remove the event handlers.
-      mutations.forEach(function (mutation) {
-        const target = mutation.target;
-        switch (mutation.type) {
-          case "childList":
-            mutation.removedNodes.forEach(n => {
-              removeEventHandlers(n);
-            });
-            mutation.addedNodes.forEach(n => {
-              if (n.nodeType === Node.ELEMENT_NODE && n.hasAttribute(attributeName)) {
-                addEventHandlers(n);
-              }
-            });
-            break;
-          case "attributes":
-            assert_true(mutation.attributeName == attributeName);
-            removeEventHandlers(n);
-            if (n.hasAttribute(attributeName)) {
+  // Inject UA-style rules for partial activation simulation
+  function injectStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+      .target-of-partial-interest { /* focusable disabled by JS */ }
+      .target-of-partial-interest::after {
+        content: "{Press Alt+UpArrow to activate}";
+        display: block;
+        color: darkgrey;
+        font-size: 0.8em;
+      }
+    `;
+    document.head.appendChild(style);
+    document[polyfillDataField].globalHintStyle = style;
+  }
+
+  // Utility to parse delays
+  function getDelaySeconds(el, prop) {
+    const raw = getComputedStyle(el).getPropertyValue(prop).trim();
+    const match = raw.match(/^([\d.]+)s$/);
+    if (match) return parseFloat(match[1]);
+    return parseFloat(raw) || 0;
+  }
+
+  const focusableSelector = [
+    'a[href]',
+    'area[href]',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    'button:not([disabled])',
+    'iframe',
+    'object',
+    'embed',
+    '[contenteditable]',
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(',');
+
+  // Manage focusability within a subtree
+  function disableFocusable(root) {
+    root.querySelectorAll(focusableSelector).forEach(el => {
+      if (el.hasAttribute('data-original-tabindex')) return;
+      const orig = el.getAttribute('tabindex');
+      el.setAttribute('data-original-tabindex', orig === null ? 'none' : orig);
+      el.setAttribute('tabindex', '-1');
+    });
+  }
+  function restoreFocusable(root) {
+    root.querySelectorAll('[data-original-tabindex]').forEach(el => {
+      const orig = el.getAttribute('data-original-tabindex');
+      if (orig === 'none') {
+        el.removeAttribute('tabindex');
+      } else {
+        el.setAttribute('tabindex', orig);
+      }
+      el.removeAttribute('data-original-tabindex');
+    });
+  }
+
+  // Activation states
+  function applyPartialInterest(invoker) {
+    const data = invoker[polyfillDataField];
+    if (data.state === 'partial' || data.state === 'full') return;
+    data.state = 'partial';
+    invoker.classList.add('has-partial-interest');
+    data.target.classList.add('target-of-partial-interest');
+    disableFocusable(data.target);
+    try { data.target.showPopover(); } catch {}
+    data.target.dispatchEvent(new Event('interest'));
+  }
+
+  function applyFullInterest(invoker) {
+    const data = invoker[polyfillDataField];
+    if (data.state === 'full') return;
+    // If not yet shown, ensure popover is shown
+    if (data.state !== 'partial') {
+      try { data.target.showPopover(); } catch {}
+    }
+    data.state = 'full';
+    invoker.classList.remove('has-partial-interest');
+    invoker.classList.add('has-full-interest');
+    data.target.classList.remove('target-of-partial-interest');
+    data.target.classList.add('target-of-full-interest');
+    restoreFocusable(data.target);
+    try { data.target.showPopover(); } catch {}
+  }
+
+  function clearInterest(invoker) {
+    const data = invoker[polyfillDataField];
+    clearTimeout(data.showTimer);
+    clearTimeout(data.hideTimer);
+    if (data.state !== 'none') {
+      invoker.classList.remove('has-partial-interest','has-full-interest');
+      data.target.classList.remove('target-of-partial-interest','target-of-full-interest');
+      restoreFocusable(data.target);
+      try { data.target.hidePopover(); } catch {}
+      data.target.dispatchEvent(new Event('loseinterest'));
+      data.state = 'none';
+    }
+  }
+
+  function scheduleShow(invoker) {
+    const data = invoker[polyfillDataField];
+    clearTimeout(data.hideTimer);
+    data.showTimer = setTimeout(() => applyPartialInterest(invoker),
+      getDelaySeconds(invoker, showDelayProp) * 1000);
+  }
+  function scheduleHide(invoker) {
+    const data = invoker[polyfillDataField];
+    clearTimeout(data.showTimer);
+    data.hideTimer = setTimeout(() => clearInterest(invoker),
+      getDelaySeconds(invoker, hideDelayProp) * 1000);
+  }
+
+  // Attach handlers to any element with [interesttarget]
+  function addEventHandlers(el) {
+    const targetId = el.getAttribute(attributeName);
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    el[polyfillDataField] = {
+      target,
+      state: 'none',
+      showTimer: null,
+      hideTimer: null
+    };
+    const signal = (new AbortController()).signal;
+    el.addEventListener('mouseenter', () => scheduleShow(el), {signal});
+    el.addEventListener('mouseleave', () => scheduleHide(el), {signal});
+    el.addEventListener('focus', () => scheduleShow(el), {signal});
+    el.addEventListener('blur', () => scheduleHide(el), {signal});
+    el.addEventListener('keydown', e => {
+      if (e.key === 'ArrowUp' && e.altKey) {
+        e.preventDefault();
+        applyFullInterest(el);
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        clearInterest(el);
+      }
+    }, {signal});
+  }
+
+  function scanAndObserve() {
+    // Initial scan
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT,
+      node => node.hasAttribute(attributeName) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+    );
+    let node;
+    while ((node = walker.nextNode())) {
+      addEventHandlers(node);
+    }
+    // Observe future mutations
+    const observer = new MutationObserver(muts => {
+      muts.forEach(m => {
+        if (m.type === 'childList') {
+          m.addedNodes.forEach(n => {
+            if (n.nodeType === 1 && n.hasAttribute(attributeName)) {
               addEventHandlers(n);
             }
-            break;
-          default:
-            assert_true(false,'mutation type');
+          });
+        } else if (m.type === 'attributes' && m.attributeName === attributeName) {
+          const n = m.target;
+          if (n.hasAttribute(attributeName)) addEventHandlers(n);
         }
       });
     });
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT,
-      (el) => el.hasAttribute(attributeName) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP);
-    let element;
-    while (element = walker.nextNode()) {
-      addEventHandlers(element);
-    }
-    document[polyfillDataField].observer.observe(document.body, {childList:true, subtree: true, attributeFilter: [attributeName]});
-  }
-  function disableInteresttargetPolyfill() {
-    unregisterCustomProperties();
-    document[polyfillDataField].observer.disconnect();
-    delete document[polyfillDataField];
+    observer.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:[attributeName]});
+    document[polyfillDataField].observer = observer;
   }
 
-  enableInteresttargetPolyfill();
+  // Initialization
+  registerCustomProperties();
+  injectStyles();
+  scanAndObserve();
   console.log(`interesttarget polyfill installed (native feature: ${nativeFeatureSupported ? "supported" : "not present"}).`);
 })();
