@@ -224,10 +224,15 @@
   }
 
   // Initialization
-  window.addEventListener('load',() => {
+  function init() {
     registerCustomProperties();
     injectStyles();
     scanAndObserve();
     console.log(`interesttarget polyfill installed (native feature: ${nativeFeatureSupported ? "supported" : "not present"}).`);
-  });
+  }
+  if (document.readyState === 'complete') {
+    init();
+  } else {
+    window.addEventListener('load',init);
+  }
 })();
