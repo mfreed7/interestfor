@@ -224,8 +224,10 @@
   }
 
   // Initialization
-  registerCustomProperties();
-  injectStyles();
-  scanAndObserve();
-  console.log(`interesttarget polyfill installed (native feature: ${nativeFeatureSupported ? "supported" : "not present"}).`);
+  window.addEventListener('load',() => {
+    registerCustomProperties();
+    injectStyles();
+    scanAndObserve();
+    console.log(`interesttarget polyfill installed (native feature: ${nativeFeatureSupported ? "supported" : "not present"}).`);
+  });
 })();
