@@ -12,6 +12,7 @@
   const showDelayProp = '--interest-target-show-delay';
   const hideDelayProp = '--interest-target-hide-delay';
   const dataField = '__interesttargetData';
+  const targetDataField = '__interesttargetTargetData';
 
   // Feature detection
   if (window.interesttargetPolyfillInstalled) return;
@@ -35,9 +36,8 @@
   // Gain or lose interest
   function GainOrLoseInterest(invoker, target, newState) {
     if (!invoker || !target) return false;
-    const invData = invoker[dataField];
     if (!invoker.isConnected ||
-        invData.target !== target ||
+        GetInterestTarget(invoker) !== target ||
         (newState === InterestState.NoInterest && GetInterestInvoker(target) !== invoker)) {
       return false;
     }
@@ -52,8 +52,7 @@
         } else {
           if (!GainOrLoseInterest(existing, target, InterestState.NoInterest)) return false;
           // re-check preconditions
-          const reData = invoker[dataField];
-          if (!invoker.isConnected || reData.target !== target) return false;
+          if (!invoker.isConnected || GetInterestTarget(invoker) !== target) return false;
         }
       }
       // finally apply interest
@@ -71,8 +70,7 @@
     if (!isFinite(delay) || delay < 0) return;
     invoker[dataField].clearGainedTask();
     invoker[dataField].gainedTimer = setTimeout(() => {
-      const target = invoker[dataField].target;
-      GainOrLoseInterest(invoker, target, newState);
+      GainOrLoseInterest(invoker, GetInterestTarget(invoker), newState);
     }, delay);
   }
 
@@ -81,14 +79,13 @@
     if (!isFinite(delay) || delay < 0) return;
     invoker[dataField].clearLostTask();
     invoker[dataField].lostTimer = setTimeout(() => {
-      const target = invoker[dataField].target;
-      GainOrLoseInterest(invoker, target, InterestState.NoInterest);
+      GainOrLoseInterest(invoker, GetInterestTarget(invoker), InterestState.NoInterest);
     }, delay);
   }
 
   // Helpers
   function GetInterestInvoker(target) {
-    const inv = target[dataField]?.invoker || null;
+    const inv = target[targetDataField]?.invoker || null;
     return (inv && inv[dataField]?.state !== InterestState.NoInterest) ? inv : null;
   }
   function GetInterestTarget(el) {
@@ -106,7 +103,7 @@
   // Actual state transitions
   function applyState(invoker, newState) {
     const data = invoker[dataField];
-    const target = data.target;
+    const target = GetInterestTarget(invoker);
     switch (newState) {
       case InterestState.PartialInterest:
         if (data.state === InterestState.NoInterest) {
@@ -116,6 +113,8 @@
           try { target.showPopover(); } catch {}
         }
         data.state = InterestState.PartialInterest;
+        if (!target[targetDataField]) target[targetDataField] = {};
+        target[targetDataField].invoker = invoker;
         invoker.classList.add('has-partial-interest','has-interest');
         target.classList.add('target-of-partial-interest','target-of-interest');
         disableFocusable(target);
@@ -125,6 +124,8 @@
           try { target.showPopover(); } catch {}
         }
         data.state = InterestState.FullInterest;
+        if (!target[targetDataField]) target[targetDataField] = {};
+        target[targetDataField].invoker = invoker;
         invoker.classList.remove('has-partial-interest');
         invoker.classList.add('has-interest');
         target.classList.remove('target-of-partial-interest');
@@ -140,11 +141,12 @@
     clearTimeout(data.gainedTimer);
     clearTimeout(data.lostTimer);
     if (data.state !== InterestState.NoInterest) {
-      const target = data.target;
+      const target = GetInterestTarget(invoker);
       if (!target.dispatchEvent(new Event('loseinterest'))) {
         return;
       }
       try { target.hidePopover(); } catch {}
+      target[targetDataField] = null;
       invoker.classList.remove('has-partial-interest','has-interest');
       target.classList.remove('target-of-partial-interest','target-of-interest');
       restoreFocusable(target);
@@ -177,10 +179,19 @@
 
   function HandleInterestTargetHoverOrFocus(el, source) {
     if (!el.isConnected) return;
-    if (!el.hasAttribute(attributeName)) return;
-    const data = el[dataField];
-    const upstreamInvoker = GetInterestInvoker(el);
     const target = GetInterestTarget(el);
+    if (!target) return;
+    let data = el[dataField];
+    if (!data) {
+      el[dataField] = {
+        state: InterestState.NoInterest,
+        gainedTimer: null, lostTimer: null,
+        clearGainedTask() { clearTimeout(this.gainedTimer); },
+        clearLostTask()   { clearTimeout(this.lostTimer); }
+      };
+      data = el[dataField];
+    }
+    const upstreamInvoker = GetInterestInvoker(el);
 
     // Hover or focus
     if (source === Source.Hover || source === Source.Focus) {
@@ -209,53 +220,24 @@
   }
 
   // Attach listeners
-  function addEventHandlers(el) {
-    const target = GetInterestTarget(el);
-    if (!target) return;
-    el[dataField] = {
-      target, state: InterestState.NoInterest,
-      gainedTimer: null, lostTimer: null,
-      clearGainedTask() { clearTimeout(this.gainedTimer); },
-      clearLostTask()   { clearTimeout(this.lostTimer); }
-    };
-    el.addEventListener('mouseover', (e)=>HandleInterestTargetHoverOrFocus(e.target, Source.Hover));
-    el.addEventListener('mouseout', (e)=>HandleInterestTargetHoverOrFocus(e.target, Source.DeHover));
-    el.addEventListener('focusin',    (e)=>HandleInterestTargetHoverOrFocus(e.target, Source.Focus));
-    el.addEventListener('focusout',   (e)=>HandleInterestTargetHoverOrFocus(e.target, Source.Blur));
-    el.addEventListener('keydown', e => {
-      if (e.key==='ArrowUp' && e.altKey) {
+  function addEventHandlers() {
+    document.body.addEventListener('mouseover', (e)=>HandleInterestTargetHoverOrFocus(e.target, Source.Hover));
+    document.body.addEventListener('mouseout', (e)=>HandleInterestTargetHoverOrFocus(e.target, Source.DeHover));
+    document.body.addEventListener('focusin',    (e)=>HandleInterestTargetHoverOrFocus(e.target, Source.Focus));
+    document.body.addEventListener('focusout',   (e)=>HandleInterestTargetHoverOrFocus(e.target, Source.Blur));
+    document.body.addEventListener('keydown', e => {
+      let data = e.target[dataField];
+      if (!data) return;
+      if (data.state !== InterestState.PartialInterest) return;
+      if (e.key==='ArrowUp' && e.altKey && data.state === InterestState.PartialInterest) {
         e.preventDefault();
-        applyState(el, InterestState.FullInterest);
+        applyState(e.target, InterestState.FullInterest);
       }
-      if (e.key==='Escape') {
+      if (e.key==='Escape' && data.state !== InterestState.NoInterest) {
         e.preventDefault();
-        clearState(el);
+        clearState(e.target);
       }
     });
-  }
-
-  // Scan & observe
-  function scanAndObserve() {
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT,
-      node => node.hasAttribute(attributeName) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
-    );
-    let n;
-    while ((n = walker.nextNode())) addEventHandlers(n);
-    const obs = new MutationObserver(muts => {
-      muts.forEach(m => {
-        if (m.type==='childList') {
-          m.addedNodes.forEach(n2=>{
-            if (n2.nodeType===1 && n2.hasAttribute(attributeName))
-              addEventHandlers(n2);
-          });
-        } else if (m.type==='attributes' && m.attributeName===attributeName) {
-          const t = m.target;
-          if (t.hasAttribute(attributeName)) addEventHandlers(t);
-        }
-      });
-    });
-    obs.observe(document.body, { subtree:true, childList:true, attributes:true, attributeFilter:[attributeName] });
-    document[dataField].observer = obs;
   }
 
   // CSS registration
@@ -288,7 +270,7 @@
   function init() {
     registerCustomProperties();
     injectStyles();
-    scanAndObserve();
+    addEventHandlers();
     console.log(`interesttarget polyfill installed (native: ${nativeSupported}).`);
   }
   if (document.readyState === 'complete') init();
