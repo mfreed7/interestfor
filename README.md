@@ -17,10 +17,11 @@ To use this polyfill, simply load it:
 ```
 
 ## Implementation / Behavior
-The polyfill adds a mutation observer to document.body that monitors for any
-elements with the `interesttarget` attribute. On those elements, it attaches
-event listeners for mouse/keyboard events, and fires `interest` and
-`loseinterest` events on the target of the `interesttarget` attribute. If the
+The polyfill adds event listeners to document.body that monitor for hover
+or keyboard events relevant fo the `interesttarget` API. When interesting
+events happen to elements with the `interesttarget` attribute or elements that
+are the targets of those elements, it fires `interest` and `loseinterest`
+events on the target of the `interesttarget` attribute. If the
 target is a popover, it also handles showing or hiding the popover.
 
 ## Tests
@@ -34,14 +35,11 @@ the native feature. You can run tests directly from this repo, [here](https://mf
 
 These things are currently not handled correctly by this polyfill:
 
-- changing the `id` on a node such that it is the new target of an `interesttarget` element.
-- Hovering and then de-hovering an interest target for "not long enough" still fires events in some cases.
-- Keyboard handling is not yet implemented.
-- Touchscreen handling is not yet implemented (and might be tough/impossible).
+- Hovering and then de-hovering an interest target for "not long enough" still shows interest.
+- Touchscreen handling is not yet implemented (and might be impossible to implement).
 - The CSS properties for the polyfill are custom properties, so their names start with `--`: `--interest-target-show-delay` and `--interest-target-hide-delay`.
-- There is no support for the `interest-target-delay` shorthand.
-- There is no support yet for the `:has-interest` pseudo class. This might need to be done via an attribute like `[has-interest]`.
-- The tests do not exercise the CSS delay values.
+- There is no support for the `--interest-target-delay` shorthand.
+- The CSS pseudo classes for the polyfill are just classes, e.g. use `button.has-interest {}` rather than `button:has-interest {}`.
 
 ## Improvements / Bugs
 
