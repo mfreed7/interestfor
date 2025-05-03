@@ -121,6 +121,9 @@
         break;
       case InterestState.FullInterest:
         if (data.state !== InterestState.PartialInterest) {
+          if (!target.dispatchEvent(new Event('interest'))) {
+            return;
+          }
           try { target.showPopover(); } catch {}
         }
         data.state = InterestState.FullInterest;
