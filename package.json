@@ -1,0 +1,17 @@
+{
+  "name": "interesttarget",
+  "version": "1.0.0",
+  "description": "A polyfill for the `interesttarget` API",
+  "keywords": "interesttarget, polyfill, hover-triggering",
+  "homepage": "https://github.com/mfreed7/interesttarget#readme",
+  "bugs": "https://github.com/mfreed7/interesttarget/issues",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mfreed7/interesttarget.git"
+  },
+  "author": "Mason Freed <mfreed@mfreed.com>",
+  "license": "BSD-3-Clause",
+  "main": "src/interesttarget.min.js",
+  "dependencies": {}
+}
+
