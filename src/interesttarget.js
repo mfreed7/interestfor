@@ -9,6 +9,8 @@
 
 (function () {
   const attributeName = "interesttarget";
+  const interestEventName = "interest";
+  const loseInterestEventName = "loseinterest";
   const showDelayProp = "--interest-target-show-delay";
   const hideDelayProp = "--interest-target-hide-delay";
   const dataField = "__interesttargetData";
@@ -24,6 +26,17 @@
   );
   if (nativeSupported && !window.interesttargetUsePolyfillAlways) {
     return;
+  }
+  if (nativeSupported) {
+    // "Break" the existing feature, so the polyfill can take effect.
+    const cancel = (e) => {
+      if (e.isTrusted) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }
+    document.body.addEventListener(interestEventName,cancel,{capture:true});
+    document.body.addEventListener(loseInterestEventName,cancel,{capture:true});
   }
 
   // Enum-like state and source
@@ -134,7 +147,7 @@
     switch (newState) {
       case InterestState.PartialInterest:
         if (data.state === InterestState.NoInterest) {
-          if (!target.dispatchEvent(new Event("interest"))) {
+          if (!target.dispatchEvent(new Event(interestEventName))) {
             return;
           }
           try {
@@ -155,7 +168,7 @@
         break;
       case InterestState.FullInterest:
         if (data.state !== InterestState.PartialInterest) {
-          if (!target.dispatchEvent(new Event("interest"))) {
+          if (!target.dispatchEvent(new Event(interestEventName))) {
             return;
           }
           try {
@@ -183,7 +196,7 @@
     clearTimeout(data.lostTimer);
     if (data.state !== InterestState.NoInterest) {
       const target = GetInterestTarget(invoker);
-      if (!target.dispatchEvent(new Event("loseinterest"))) {
+      if (!target.dispatchEvent(new Event(loseInterestEventName))) {
         return;
       }
       try {
@@ -336,25 +349,14 @@
   // CSS registration
   function registerCustomProperties() {
     const style = document.createElement("style");
-    style.textContent = `
-      @property ${showDelayProp} {
-        syntax: "<time>"; inherits: false; initial-value: 0.5s;
-      }
-      @property ${hideDelayProp} {
-        syntax: "<time>"; inherits: false; initial-value: 0.5s;
-      }
-    `;
+    style.textContent = `@property ${showDelayProp} {syntax: "<time>"; inherits: false; initial-value: 0.5s;}
+      @property ${hideDelayProp} {syntax: "<time>"; inherits: false; initial-value: 0.5s;}`;
     document.head.appendChild(style);
     document[dataField] = { globalPropsStyle: style };
   }
   function injectStyles() {
     const style = document.createElement("style");
-    style.textContent = `
-      .target-of-partial-interest::after {
-        content: "{Press Alt+UpArrow to activate}";
-        display: block; color: darkgrey; font-size: 0.8em;
-      }
-    `;
+    style.textContent = `.target-of-partial-interest::after { content: "{Press Alt+UpArrow to activate}"; display: block; color: darkgrey; font-size: 0.8em;}`;
     document.head.appendChild(style);
     document[dataField].globalHintStyle = style;
   }

@@ -15,13 +15,16 @@
 </ul>
 <button id="go">Run the test</button>
 
-<div id="targets">
-  <a href=foo id=unrelated class="hide hovertarget">Unrelated</a>
-  <a interesttarget=already_present_target href=foo id=already_present class="hide hovertarget">Link</a></div>
-  <div popover id="already_present_target" class="hovertarget">
-    Popover
+<button class="test_content">Focusable thing before test stuff</button>
+<div class="test_content" id="targets">
+  <a href=foo id=unrelated class="hide test-element">Unrelated</a>
+  <a interesttarget=already_present_target href=foo id=already_present class="hide test-element">Link</a></div>
+  <div popover id="already_present_target" class="hide">
+    Popover - ignore me
   </div>
 </div>
+<button class="test_content">Focusable thing after test stuff</button>
+<div popover="manual" class="test_content" id="focus_warning"><h1>Get ready to use <span id="type_str">SOMETHING</span>...</h1></div>
 
 <div id=results class="hide">
   <h3>Results:</h3>
@@ -39,16 +42,31 @@
   html,body {
     width: 100%;
   }
-  .hovertarget {
+  .test-element {
     width:300px;
     height:100px;
+    margin: 10px 0;
     border: 1px solid red;
   }
-  .hovertarget:not([popover]) {
+  .test-element:not([popover]) {
     display:block;
   }
   .hide {
-    visibility:hidden;
+    visibility: hidden;
+  }
+  body.testing :not(.test_content,.test_content *) {
+    display:none;
+  }
+  :focus-visible {
+    outline: 3px solid red;
+  }
+  #focus_warning {
+    inset:auto;
+    top:50px;
+    left:50px;
+    width: 600px;
+    height: 400px;
+    border: 2px solid red;
   }
 </style>
 
@@ -108,91 +126,178 @@ function assert_true(val,msg,logSuccess) {
     console.log('=====> FAIL! ',msg);
     any_failures = true;
     addResult(false,msg);
+    return false;
   } else if (logSuccess) {
     addResult(true,msg);
+    return true;
   }
 }
 function assert_false(val,msg,logSuccess) {
   return assert_true(!val,msg,logSuccess);
 }
+function notreached(msg) {
+  return assert_true(false,msg,/*logSuccess*/true);
+}
 
 function assert_array_equals(actual, expected, description, logSuccess) {
   if (!(typeof actual === "object" && actual !== null && "length" in actual)) {
     assert_true(false, `${description}, value is ${actual}, expected array`);
+    return false;
   }
   if (actual.length !== expected.length) {
     assert_true(false,`${description}, lengths differ, expected array ${expected} length ${expected.length}, got ${actual} length ${actual.length}`);
+    return false;
   }
+  let val = true;
   for (var i = 0; i < actual.length; i++) {
     if (actual.hasOwnProperty(i) !== expected.hasOwnProperty(i)) {
-      assert_true(false,`${description}, expected property ${i} to be ${expected[i]} but was ${actual[i]} (expected array ${expected} got ${actual})`);
+      val = assert_true(false,`${description}, expected property ${i} to be ${expected[i]} but was ${actual[i]} (expected array ${expected} got ${actual})`)
+        && val;
     }
     if (expected[i] !== actual[i]) {
-      assert_true(false,`${description}, expected property ${i} to be ${expected[i]} but got ${actual[i]} (expected array ${expected} got ${actual})`);
+      val = assert_true(false,`${description}, expected property ${i} to be ${expected[i]} but got ${actual[i]} (expected array ${expected} got ${actual})`)
+        && val;
     }
   }
-  assert_true(true,description,logSuccess);
+  if (val) {
+    assert_true(true,description,logSuccess);
+  }
 }
 
 const hoverTimeMilliseconds = 500;
-async function waitForHover(element,timeMilliseconds) {
+async function waitForHoverOrFocus(type,element,target,timeMilliseconds) {
+  let events = [];
+  const controller = new AbortController();
+  const signal = controller.signal;
+  target.addEventListener('interest',() => events.push('interest'),{signal});
+  target.addEventListener('loseinterest',() => events.push('loseinterest'),{signal});
+
   let done = false;
   do {
-    element.innerText = 'HOVER ME WITH THE MOUSE';
-    await new Promise(resolve => element.addEventListener('mouseenter',resolve, {once:true}));
-    element.innerText = 'STAY HOVERING ON THIS';
+    events = [];
+    let goBackText = "";
+    switch (type) {
+      case 'hover':
+        goBackText = 'HOVER ME WITH THE MOUSE'
+        element.innerText = goBackText;
+        await new Promise(resolve => element.addEventListener('mouseenter',resolve, {once:true}));
+        element.innerText = 'STAY HOVERING ON THIS';
+        break;
+      case 'focus':
+        goBackText = 'FOCUS ME WITH THE KEYBOARD'
+        element.innerText = goBackText;
+        await new Promise(resolve => element.addEventListener('focus',resolve, {once:true}));
+        element.innerText = 'STAY FOCUSED ON THIS';
+        break;
+      default:
+        notreached('invalid type');
+    }
+    await new Promise(resolve => setTimeout(resolve,0));
+    midEvents = [...events];
+    midTargetOpen = target.matches(':popover-open');
+    let gotTimeout = false;
     const timeout = new Promise(resolve => setTimeout(() => {
-      done=true;
+      gotTimeout=true;
       resolve();
     },timeMilliseconds));
-    const mouseLeft = new Promise(resolve => element.addEventListener('mouseleave',resolve, {once:true}));
-    await Promise.race([timeout,mouseLeft]);
+    switch (type) {
+      case 'hover':
+        const mouseLeft = new Promise(resolve => element.addEventListener('mouseleave',resolve, {once:true}));
+        await Promise.race([timeout,mouseLeft]);
+        break;
+      case 'focus':
+        const focusLeft = new Promise(resolve => element.addEventListener('blur',resolve, {once:true}));
+        await Promise.race([timeout,focusLeft]);
+        break;
+      default:
+        notreached('invalid type');
+    }
+    done = gotTimeout;
+    if (!done) {
+      element.innerText = goBackText;
+      await timeout;
+    }
   } while (!done);
+  controller.abort();
+  await new Promise(resolve => setTimeout(resolve,0));
+  return {midEvents, midTargetOpen, endEvents: [...events], endTargetOpen: target.matches(':popover-open')};
 }
 
-async function testOne(invoker, target, description) {
+async function testOne(invoker, target, type, description) {
   assert_true(true,'---' + description,true);
-  let events = [];
-  target.addEventListener('interest',() => events.push('interest'));
-  target.addEventListener('loseinterest',() => events.push('loseinterest'));
   assert_false(target.matches(':popover-open'),'popover should start closed',true);
   invoker.style.setProperty('--interest-target-show-delay',hoverTimeMilliseconds + 'ms');
   invoker.style.setProperty('--interest-target-hide-delay',hoverTimeMilliseconds + 'ms');
   invoker.classList.remove('hide');
-  assert_array_equals(events,[],'init',true);
-  await waitForHover(invoker,hoverTimeMilliseconds);
-  assert_true(target.matches(':popover-open'),'popover should be invoked by hovering',true);
-  assert_array_equals(events,['interest'],'interest event fired',true);
+
+  // Show interest in the invoker
+  let {midEvents, midTargetOpen, endEvents, endTargetOpen} = await waitForHoverOrFocus(type,invoker,target,hoverTimeMilliseconds);
+  const startString = type=='hover' ? 'hovering' : 'focusing';
+  assert_false(midTargetOpen,`popover should *not* be immediately invoked by ${startString}`,true);
+  assert_array_equals(midEvents,[],`No events should be immediately fired by ${startString}`,true);
+  assert_true(endTargetOpen,`popover should invoked after delay after ${startString}`,true);
+  assert_array_equals(endEvents,['interest'],`The interest event should be fired after ${startString}`,true);
   invoker.classList.add('hide');
   unrelated.classList.remove('hide');
-  await waitForHover(unrelated,hoverTimeMilliseconds);
-  assert_false(target.matches(':popover-open'),'popover should be hidden by de-hovering',true);
-  assert_array_equals(events,['interest','loseinterest'],'loseinterest event fired',true);
+
+  // Lose interest in the invoker
+  ({midEvents, midTargetOpen, endEvents, endTargetOpen} = await waitForHoverOrFocus(type,unrelated,target,hoverTimeMilliseconds));
+  const endString = type=='hover' ? 'de-hovering' : 'blurring';
+  assert_true(midTargetOpen,`popover should *not* be immediately hidden by ${endString}`,true);
+  assert_array_equals(midEvents,[],`No events should be immediately fired by ${endString}`,true);
+  assert_false(endTargetOpen,`popover should hidden after delay after ${endString}`,true);
+  assert_array_equals(endEvents,['loseinterest'],`The loseinterest event should be fired after ${endString}`,true);
   invoker.classList.add('hide');
   unrelated.classList.add('hide');
 }
 
-async function testHarness() {
-  await testOne(already_present,already_present_target,'Pre-existing elements');
+async function showFocusWarning(type) {
+  const popover = document.getElementById('focus_warning');
+  const typeStr = document.getElementById('type_str');
+  switch (type) {
+    case 'hover':
+      typeStr.innerText = "THE MOUSE to activate elements";
+      break;
+    case 'focus':
+      typeStr.innerText = "THE KEYBOARD to activate elements (and move the mouse away)";
+      break;
+    default:
+      notreached('invalid type');
+  }
+  popover.showPopover();
+  await new Promise(resolve => setTimeout(resolve,3000));
+  popover.hidePopover();
+}
 
-  // Dynamically add elements:
-  const targets = document.getElementById('targets');
-  const dynamic_invoker = document.createElement('a');
-  dynamic_invoker.href = 'foo';
-  dynamic_invoker.setAttribute('interesttarget','dynamic_target');
-  dynamic_invoker.classList='hide hovertarget';
-  const dynamic_target = document.createElement('div');
-  dynamic_target.popover = 'auto';
-  dynamic_target.id = 'dynamic_target';
-  dynamic_target.classList = 'hovertarget';
-  targets.append(dynamic_invoker,dynamic_target);
-  await testOne(dynamic_invoker,dynamic_target,'Dynamically-added elements');
+async function testHarness() {
+  document.body.classList.add('testing');
+
+  for(type of ['hover','focus']) {
+    await showFocusWarning(type);
+    await testOne(already_present,already_present_target,type,'Pre-existing elements');
+
+    // Dynamically add elements:
+    const targets = document.getElementById('targets');
+    const dynamic_invoker = document.createElement('a');
+    dynamic_invoker.href = 'foo';
+    dynamic_invoker.setAttribute('interesttarget','dynamic_target');
+    dynamic_invoker.classList='hide test-element';
+    const dynamic_target = document.createElement('div');
+    dynamic_target.popover = 'auto';
+    dynamic_target.id = 'dynamic_target';
+    dynamic_target.classList = 'hide';
+    targets.append(dynamic_invoker,dynamic_target);
+    await testOne(dynamic_invoker,dynamic_target,type,'Dynamically-added elements');
+    dynamic_invoker.remove();
+    dynamic_target.remove();
+  }
 
   // Test complete
   targets.style.display = 'none';
   const summary = document.getElementById('summary');
   summary.innerText = any_failures ? 'FAILURE' : 'PASS';
   summary.classList = any_failures ? 'fail' : 'pass';
+  document.body.classList.remove('testing');
 }
 
 </script>
