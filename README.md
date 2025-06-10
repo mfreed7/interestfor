@@ -1,6 +1,6 @@
-# `interesttarget` Polyfill
+# `interestfor` Polyfill
 
-A polyfill for the `interesttarget` attribute. This is an emerging standard for
+A polyfill for the `interestfor` attribute. This is an emerging standard for
 an API that hopes to be implemented in browsers. See the explainer for all of
 the details for the "real" feature:
 
@@ -10,15 +10,15 @@ the details for the "real" feature:
 To use this polyfill, simply load it:
 
 ```html
-<script src="interesttarget.min.js" async></script>
+<script src="interestfor.min.js" async></script>
 
-<a interesttarget=foo href=bar>Link</a>
+<a interestfor=foo href=bar>Link</a>
 <div popover id=foo>Popover</div>
 ```
 
 ## Behavior Summary
 
-Adding the `interesttarget` attribute to a button or link (the "interest
+Adding the `interestfor` attribute to a button or link (the "interest
 invoker"), and giving it a value that is the IDREF of another element (the
 "target" element), will cause the target to get "interest" and "loseinterest"
 events when the user "shows interest" in the interest invoker. Showing interest
@@ -54,10 +54,10 @@ browsers:
 
 ## Implementation
 The polyfill adds event listeners to document.body that monitor for hover
-or keyboard events relevant fo the `interesttarget` API. When interesting
-events happen to elements with the `interesttarget` attribute or elements that
+or keyboard events relevant fo the `interestfor` API. When interesting
+events happen to elements with the `interestfor` attribute or elements that
 are the targets of those elements, it fires `interest` and `loseinterest`
-events on the target of the `interesttarget` attribute. If the
+events on the target of the `interestfor` attribute. If the
 target is a popover, it also handles showing or hiding the popover.
 
 Because this is a polyfill, a few things are slightly different than the
@@ -68,11 +68,11 @@ native feature:
   property, prefixed with `--`, to your stylesheet:
 
   ```css
-  [interesttarget] {
-    interest-target-show-delay: 400ms;
-    --interest-target-show-delay: 400ms;
-    interest-target-hide-delay: 200ms;
-    --interest-target-hide-delay: 200ms;
+  [interestfor] {
+    interest-show-delay: 400ms;
+    --interest-show-delay: 400ms;
+    interest-hide-delay: 200ms;
+    --interest-hide-delay: 200ms;
   }
   ```
 
@@ -80,8 +80,8 @@ native feature:
   implemented as regular class names, so again add both to your stylesheet:
 
   ```css
-  :is([interesttarget]:has-interest),
-  [interesttarget].has-interest {
+  :is([interestfor]:has-interest),
+  [interestfor].has-interest {
     /* invoker styles */
   }
   :is([popover]:target-of-interest),
@@ -102,17 +102,17 @@ for correctness. This is a manual test, since hovering, keyboard-focusing, etc.
 cannot be done programmatically. The test is capable of testing either the
 polyfill (optionally minified) or the native feature. You can run tests directly
 from this repo,
-[here](https://mfreed7.github.io/interesttarget/test/test.html).
+[here](https://mfreed7.github.io/interestfor/test/test.html).
 
 ## Things that don't (yet?) work
 
 These things are currently not handled correctly by this polyfill:
 
-- There is no support for the `--interest-target-delay` shorthand.
+- There is no support for the `--interest-delay` shorthand.
 - There is no touchscreen support, as mentioned above.
 
 ## Improvements / Bugs
 
-If you find issues with the polyfill, feel free to file them [here](https://github.com/mfreed7/interesttarget/issues).
-Even better, if you would like to contribute to this polyfill, I'm happy to review [pull requests](https://github.com/mfreed7/interesttarget/pulls).
+If you find issues with the polyfill, feel free to file them [here](https://github.com/mfreed7/interestfor/issues).
+Even better, if you would like to contribute to this polyfill, I'm happy to review [pull requests](https://github.com/mfreed7/interestfor/pulls).
 Thanks in advance!
