@@ -4,27 +4,27 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-// This is a polyfill of the `interesttarget` attribute, as described here:
+// This is a polyfill of the `interestfor` attribute, as described here:
 //   https://open-ui.org/components/interest-invokers.explainer/
 
 (function () {
-  const attributeName = "interesttarget";
+  const attributeName = "interestfor";
   const interestEventName = "interest";
   const loseInterestEventName = "loseinterest";
-  const showDelayProp = "--interest-target-show-delay";
-  const hideDelayProp = "--interest-target-hide-delay";
-  const dataField = "__interesttargetData";
-  const targetDataField = "__interesttargetTargetData";
+  const showDelayProp = "--interest-show-delay";
+  const hideDelayProp = "--interest-hide-delay";
+  const dataField = "__interestForData";
+  const targetDataField = "__interestForTargetData";
 
   // Feature detection
-  if (window.interesttargetPolyfillInstalled) {
+  if (window.interestForPolyfillInstalled) {
     return;
   }
-  window.interesttargetPolyfillInstalled = true;
+  window.interestForPolyfillInstalled = true;
   const nativeSupported = HTMLButtonElement.prototype.hasOwnProperty(
-    "interestTargetElement"
+    "interestForElement"
   );
-  if (nativeSupported && !window.interesttargetUsePolyfillAlways) {
+  if (nativeSupported && !window.interestForUsePolyfillAlways) {
     return;
   }
   if (nativeSupported) {
@@ -59,7 +59,7 @@
     }
     if (
       !invoker.isConnected ||
-      GetInterestTarget(invoker) !== target ||
+      GetInterestForTarget(invoker) !== target ||
       (newState === InterestState.NoInterest &&
         GetInterestInvoker(target) !== invoker)
     ) {
@@ -78,7 +78,7 @@
             return false;
           }
           // re-check preconditions
-          if (!invoker.isConnected || GetInterestTarget(invoker) !== target) {
+          if (!invoker.isConnected || GetInterestForTarget(invoker) !== target) {
             return false;
           }
         }
@@ -100,7 +100,7 @@
     }
     invoker[dataField].clearGainedTask();
     invoker[dataField].gainedTimer = setTimeout(() => {
-      GainOrLoseInterest(invoker, GetInterestTarget(invoker), newState);
+      GainOrLoseInterest(invoker, GetInterestForTarget(invoker), newState);
     }, delay);
   }
 
@@ -113,7 +113,7 @@
     invoker[dataField].lostTimer = setTimeout(() => {
       GainOrLoseInterest(
         invoker,
-        GetInterestTarget(invoker),
+        GetInterestForTarget(invoker),
         InterestState.NoInterest
       );
     }, delay);
@@ -126,7 +126,7 @@
       ? inv
       : null;
   }
-  function GetInterestTarget(el) {
+  function GetInterestForTarget(el) {
     const id = el.getAttribute(attributeName);
     return document.getElementById(id);
   }
@@ -143,7 +143,7 @@
   // Actual state transitions
   function applyState(invoker, newState) {
     const data = invoker[dataField];
-    const target = GetInterestTarget(invoker);
+    const target = GetInterestForTarget(invoker);
     switch (newState) {
       case InterestState.PartialInterest:
         if (data.state === InterestState.NoInterest) {
@@ -195,7 +195,7 @@
     clearTimeout(data.gainedTimer);
     clearTimeout(data.lostTimer);
     if (data.state !== InterestState.NoInterest) {
-      const target = GetInterestTarget(invoker);
+      const target = GetInterestForTarget(invoker);
       if (!target.dispatchEvent(new Event(loseInterestEventName))) {
         return;
       }
@@ -249,11 +249,11 @@
     });
   }
 
-  function HandleInterestTargetHoverOrFocus(el, source) {
+  function HandleInterestHoverOrFocus(el, source) {
     if (!el.isConnected) {
       return;
     }
-    const target = GetInterestTarget(el);
+    const target = GetInterestForTarget(el);
     if (!target) {
       return;
     }
@@ -312,16 +312,16 @@
   // Attach listeners
   function addEventHandlers() {
     document.body.addEventListener("mouseover", (e) =>
-      HandleInterestTargetHoverOrFocus(e.target, Source.Hover)
+      HandleInterestHoverOrFocus(e.target, Source.Hover)
     );
     document.body.addEventListener("mouseout", (e) =>
-      HandleInterestTargetHoverOrFocus(e.target, Source.DeHover)
+      HandleInterestHoverOrFocus(e.target, Source.DeHover)
     );
     document.body.addEventListener("focusin", (e) =>
-      HandleInterestTargetHoverOrFocus(e.target, Source.Focus)
+      HandleInterestHoverOrFocus(e.target, Source.Focus)
     );
     document.body.addEventListener("focusout", (e) =>
-      HandleInterestTargetHoverOrFocus(e.target, Source.Blur)
+      HandleInterestHoverOrFocus(e.target, Source.Blur)
     );
     document.body.addEventListener("keydown", (e) => {
       let data = e.target[dataField];
@@ -367,7 +367,7 @@
     injectStyles();
     addEventHandlers();
     console.log(
-      `interesttarget polyfill installed (native: ${nativeSupported}).`
+      `interestfor polyfill installed (native: ${nativeSupported}).`
     );
   }
   if (document.readyState === "complete") {

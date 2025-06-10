@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<h3>Interesttarget Polyfill Test</h3>
+<h3>Interestfor Polyfill Test</h3>
 <ul>
   <li><p><label>
     <select id="polyfill_select">
@@ -8,7 +8,7 @@
       <option id="option_use_min_polyfill">Test using the minified polyfill</option>
       <option id="option_use_native">Test the native feature</option>
     </select>
-  <li><p>Interesttarget is <u id="native_support"></u> in this browser.</p>
+  <li><p>Interestfor is <u id="native_support"></u> in this browser.</p>
   <li><p>This test will test the <u id="what_to_test"></u>.</p>
   <li><p>To cleanly re-test different cases (removing all polyfill traces), reload the page.</p></li>
   <li><p><h3 style="display:inline">Note!</h3> This is a *manual* test - you must follow the instructions carefully while testing.</p></li>
@@ -18,7 +18,7 @@
 <button class="test_content">Focusable thing before test stuff</button>
 <div class="test_content" id="targets">
   <a href=foo id=unrelated class="hide test-element">Unrelated</a>
-  <a interesttarget=already_present_target href=foo id=already_present class="hide test-element">Link</a></div>
+  <a interestfor=already_present_target href=foo id=already_present class="hide test-element">Link</a></div>
   <div popover id="already_present_target" class="hide">
     Popover - ignore me
   </div>
@@ -71,7 +71,7 @@
 </style>
 
 <script>
-const nativelySupported = HTMLButtonElement.prototype.hasOwnProperty("interestTargetElement");
+const nativelySupported = HTMLButtonElement.prototype.hasOwnProperty("interestForElement");
 const polyfillSelect = document.querySelector('#polyfill_select');
 const goButton = document.querySelector('#go');
 const whatToTest = document.querySelector('#what_to_test');
@@ -99,9 +99,9 @@ goButton.onclick = async () => {
   const minPolyfill = document.querySelector('#option_use_min_polyfill').selected;
   if (normalPolyfill || minPolyfill) {
     // This will tell the polyfill to load even if natively supported:
-    window.interesttargetUsePolyfillAlways = true;
+    window.interestForUsePolyfillAlways = true;
     const polyfill = document.createElement('script');
-    polyfill.src = "../src/interesttarget." + (minPolyfill ? "min.js" : "js")
+    polyfill.src = "../src/interestfor." + (minPolyfill ? "min.js" : "js")
     const loaded = new Promise(resolve => polyfill.onload = resolve);
     document.body.appendChild(polyfill);
     await loaded;
@@ -226,8 +226,8 @@ async function waitForHoverOrFocus(type,element,target,timeMilliseconds) {
 async function testOne(invoker, target, type, description) {
   assert_true(true,'---' + description,true);
   assert_false(target.matches(':popover-open'),'popover should start closed',true);
-  invoker.style.setProperty('--interest-target-show-delay',hoverTimeMilliseconds + 'ms');
-  invoker.style.setProperty('--interest-target-hide-delay',hoverTimeMilliseconds + 'ms');
+  invoker.style.setProperty('--interest-show-delay',hoverTimeMilliseconds + 'ms');
+  invoker.style.setProperty('--interest-hide-delay',hoverTimeMilliseconds + 'ms');
   invoker.classList.remove('hide');
 
   // Show interest in the invoker
@@ -280,7 +280,7 @@ async function testHarness() {
     const targets = document.getElementById('targets');
     const dynamic_invoker = document.createElement('a');
     dynamic_invoker.href = 'foo';
-    dynamic_invoker.setAttribute('interesttarget','dynamic_target');
+    dynamic_invoker.setAttribute('interestfor','dynamic_target');
     dynamic_invoker.classList='hide test-element';
     const dynamic_target = document.createElement('div');
     dynamic_target.popover = 'auto';
