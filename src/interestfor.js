@@ -151,7 +151,7 @@
             return;
           }
           try {
-            target.showPopover();
+            target.showPopover({ source: invoker });
           } catch {}
         }
         data.state = InterestState.PartialInterest;
@@ -172,7 +172,7 @@
             return;
           }
           try {
-            target.showPopover();
+            target.showPopover({ source: invoker });
           } catch {}
         }
         data.state = InterestState.FullInterest;
