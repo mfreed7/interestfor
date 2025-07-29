@@ -21,9 +21,8 @@
     return;
   }
   window.interestForPolyfillInstalled = true;
-  const nativeSupported = HTMLButtonElement.prototype.hasOwnProperty(
-    "interestForElement"
-  );
+  const nativeSupported =
+    HTMLButtonElement.prototype.hasOwnProperty("interestForElement");
   if (nativeSupported && !window.interestForUsePolyfillAlways) {
     return;
   }
@@ -34,15 +33,18 @@
         e.preventDefault();
         e.stopImmediatePropagation();
       }
-    }
-    document.body.addEventListener(interestEventName,cancel,{capture:true});
-    document.body.addEventListener(loseInterestEventName,cancel,{capture:true});
+    };
+    document.body.addEventListener(interestEventName, cancel, {
+      capture: true,
+    });
+    document.body.addEventListener(loseInterestEventName, cancel, {
+      capture: true,
+    });
   }
 
   // Enum-like state and source
   const InterestState = {
     NoInterest: "none",
-    PartialInterest: "partial",
     FullInterest: "full",
   };
   const Source = {
@@ -78,7 +80,10 @@
             return false;
           }
           // re-check preconditions
-          if (!invoker.isConnected || GetInterestForTarget(invoker) !== target) {
+          if (
+            !invoker.isConnected ||
+            GetInterestForTarget(invoker) !== target
+          ) {
             return false;
           }
         }
@@ -145,47 +150,27 @@
     const data = invoker[dataField];
     const target = GetInterestForTarget(invoker);
     switch (newState) {
-      case InterestState.PartialInterest:
-        if (data.state === InterestState.NoInterest) {
-          if (!target.dispatchEvent(new Event(interestEventName))) {
-            return;
-          }
-          try {
-            target.showPopover({ source: invoker });
-          } catch {}
-        }
-        data.state = InterestState.PartialInterest;
-        if (!target[targetDataField]) {
-          target[targetDataField] = {};
-        }
-        target[targetDataField].invoker = invoker;
-        invoker.classList.add("has-partial-interest", "has-interest");
-        target.classList.add(
-          "target-of-partial-interest",
-          "target-of-interest"
-        );
-        disableFocusable(target);
-        break;
       case InterestState.FullInterest:
-        if (data.state !== InterestState.PartialInterest) {
-          if (!target.dispatchEvent(new Event(interestEventName))) {
-            return;
-          }
-          try {
-            target.showPopover({ source: invoker });
-          } catch {}
+        if (data.state !== InterestState.NoInterest) {
+          throw new Error("Invalid state");
         }
+        if (!target.dispatchEvent(new Event(interestEventName))) {
+          return;
+        }
+        try {
+          target.showPopover({ source: invoker });
+        } catch {}
         data.state = InterestState.FullInterest;
         if (!target[targetDataField]) {
           target[targetDataField] = {};
         }
         target[targetDataField].invoker = invoker;
-        invoker.classList.remove("has-partial-interest");
         invoker.classList.add("has-interest");
-        target.classList.remove("target-of-partial-interest");
         target.classList.add("target-of-interest");
         restoreFocusable(target);
         break;
+      default:
+        throw new Error("Invalid state");
     }
     return true;
   }
@@ -203,11 +188,8 @@
         target.hidePopover();
       } catch {}
       target[targetDataField] = null;
-      invoker.classList.remove("has-partial-interest", "has-interest");
-      target.classList.remove(
-        "target-of-partial-interest",
-        "target-of-interest"
-      );
+      invoker.classList.remove("has-interest");
+      target.classList.remove("target-of-interest");
       restoreFocusable(target);
       data.state = InterestState.NoInterest;
     }
@@ -279,21 +261,8 @@
       data.clearLostTask && data.clearLostTask();
       if (upstreamInvoker) {
         upstreamInvoker[dataField].clearLostTask();
-        if (
-          upstreamInvoker[dataField].state === InterestState.PartialInterest
-        ) {
-          applyState(upstreamInvoker, InterestState.FullInterest);
-        }
       }
-      const needsPartialInterest =
-        source === Source.Focus &&
-        target.matches(":has(" + focusableSelector + ")");
-      ScheduleInterestGainedTask(
-        el,
-        needsPartialInterest
-          ? InterestState.PartialInterest
-          : InterestState.FullInterest
-      );
+      ScheduleInterestGainedTask(el, InterestState.FullInterest);
     } else {
       // Dehover or blur
       data.clearGainedTask && data.clearGainedTask();
@@ -328,17 +297,6 @@
       if (!data) {
         return;
       }
-      if (data.state !== InterestState.PartialInterest) {
-        return;
-      }
-      if (
-        e.key === "ArrowUp" &&
-        e.altKey &&
-        data.state === InterestState.PartialInterest
-      ) {
-        e.preventDefault();
-        applyState(e.target, InterestState.FullInterest);
-      }
       if (e.key === "Escape" && data.state !== InterestState.NoInterest) {
         e.preventDefault();
         clearState(e.target);
@@ -354,21 +312,12 @@
     document.head.appendChild(style);
     document[dataField] = { globalPropsStyle: style };
   }
-  function injectStyles() {
-    const style = document.createElement("style");
-    style.textContent = `.target-of-partial-interest::after { content: "{Press Alt+UpArrow to activate}"; display: block; color: darkgrey; font-size: 0.8em;}`;
-    document.head.appendChild(style);
-    document[dataField].globalHintStyle = style;
-  }
 
   // Initialize
   function init() {
     registerCustomProperties();
-    injectStyles();
     addEventHandlers();
-    console.log(
-      `interestfor polyfill installed (native: ${nativeSupported}).`
-    );
+    console.log(`interestfor polyfill installed (native: ${nativeSupported}).`);
   }
   if (document.readyState === "complete") {
     init();
