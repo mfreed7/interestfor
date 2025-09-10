@@ -231,7 +231,7 @@
     });
   }
 
-  function HandleInterestHoverOrFocus(el, source) {
+  function HandleInterestHoverOrFocus(el) {
     if (!el.isConnected) {
       return;
     }
@@ -256,15 +256,36 @@
     }
     const upstreamInvoker = GetInterestInvoker(el);
 
-    // Hover or focus
-    if (source === Source.Hover || source === Source.Focus) {
-      data.clearLostTask && data.clearLostTask();
-      if (upstreamInvoker) {
-        upstreamInvoker[dataField].clearLostTask();
+    data.clearLostTask && data.clearLostTask();
+    if (upstreamInvoker) {
+      upstreamInvoker[dataField].clearLostTask();
+    }
+    ScheduleInterestGainedTask(el, InterestState.FullInterest);
+  }
+
+  function HandleInterestDehoverOrBlur(el, source, force = false) {
+    if (!el.isConnected) {
+      return;
+    }
+    const target = GetInterestForTarget(el);
+    if ((target && target.getAttribute("popover") === "hint") || force) {
+      let data = el[dataField];
+      if (!data) {
+        el[dataField] = {
+          state: InterestState.NoInterest,
+          gainedTimer: null,
+          lostTimer: null,
+          clearGainedTask() {
+            clearTimeout(this.gainedTimer);
+          },
+          clearLostTask() {
+            clearTimeout(this.lostTimer);
+          },
+        };
+        data = el[dataField];
       }
-      ScheduleInterestGainedTask(el, InterestState.FullInterest);
-    } else {
-      // Dehover or blur
+      const upstreamInvoker = GetInterestInvoker(el);
+
       data.clearGainedTask && data.clearGainedTask();
       if (data.state !== InterestState.NoInterest) {
         ScheduleInterestLostTask(el);
@@ -275,22 +296,48 @@
           ScheduleInterestLostTask(upstreamInvoker);
         }
       }
+    } else {
+      const elements = document.querySelectorAll(".has-interest, .target-of-interest, .target-of-interest *");
+
+      if (Array.from(elements).includes(el)) {
+        if (source === Source.DeHover) {
+          const isMouseOverAny = Array.from(elements).some((e) => e.matches(":hover"));
+          if (!isMouseOverAny) {
+            const childElements = document.querySelectorAll(".target-of-interest *");
+            if (Array.from(childElements).includes(el)) {
+              el = el.closest(".target-of-interest");
+            }
+            HandleInterestDehoverOrBlur(el, source, true);
+          }
+        } else if (source === Source.Blur) {
+          setTimeout(() => {
+            const isFocusAny = Array.from(elements).some((e) => e.matches(":focus"));
+            if (!isFocusAny) {
+              const childElements = document.querySelectorAll(".target-of-interest *");
+              if (Array.from(childElements).includes(el)) {
+                el = el.closest(".target-of-interest");
+              }
+              HandleInterestDehoverOrBlur(el, source, true);
+            }
+          }, 10);
+        }
+      }
     }
   }
 
   // Attach listeners
   function addEventHandlers() {
     document.body.addEventListener("mouseover", (e) =>
-      HandleInterestHoverOrFocus(e.target, Source.Hover)
+      HandleInterestHoverOrFocus(e.target)
     );
     document.body.addEventListener("mouseout", (e) =>
-      HandleInterestHoverOrFocus(e.target, Source.DeHover)
+      HandleInterestDehoverOrBlur(e.target, Source.DeHover)
     );
     document.body.addEventListener("focusin", (e) =>
-      HandleInterestHoverOrFocus(e.target, Source.Focus)
+      HandleInterestHoverOrFocus(e.target)
     );
     document.body.addEventListener("focusout", (e) =>
-      HandleInterestHoverOrFocus(e.target, Source.Blur)
+      HandleInterestDehoverOrBlur(e.target, Source.Blur)
     );
     document.body.addEventListener("keydown", (e) => {
       let data = e.target[dataField];
