@@ -15,6 +15,7 @@
   const hideDelayProp = "--interest-delay-end";
   const dataField = "__interestForData";
   const targetDataField = "__interestForTargetData";
+  const invokersWithInterest = new Set();
 
   // Feature detection
   if (window.interestForPolyfillInstalled) {
@@ -154,9 +155,7 @@
         if (data.state !== InterestState.NoInterest) {
           throw new Error("Invalid state");
         }
-        if (!target.dispatchEvent(new Event(interestEventName))) {
-          return;
-        }
+        target.dispatchEvent(new Event(interestEventName));
         try {
           target.showPopover({ source: invoker });
         } catch {}
@@ -165,6 +164,7 @@
           target[targetDataField] = {};
         }
         target[targetDataField].invoker = invoker;
+        invokersWithInterest.add(invoker);
         invoker.classList.add("has-interest");
         target.classList.add("target-of-interest");
         restoreFocusable(target);
@@ -181,13 +181,12 @@
     clearTimeout(data.lostTimer);
     if (data.state !== InterestState.NoInterest) {
       const target = GetInterestForTarget(invoker);
-      if (!target.dispatchEvent(new Event(loseInterestEventName))) {
-        return;
-      }
+      target.dispatchEvent(new Event(loseInterestEventName));
       try {
         target.hidePopover();
       } catch {}
       target[targetDataField] = null;
+      invokersWithInterest.delete(invoker);
       invoker.classList.remove("has-interest");
       target.classList.remove("target-of-interest");
       restoreFocusable(target);
@@ -293,13 +292,11 @@
       HandleInterestHoverOrFocus(e.target, Source.Blur)
     );
     document.body.addEventListener("keydown", (e) => {
-      let data = e.target[dataField];
-      if (!data) {
-        return;
-      }
-      if (e.key === "Escape" && data.state !== InterestState.NoInterest) {
-        e.preventDefault();
-        clearState(e.target);
+      if (e.key === "Escape") {
+        invokersWithInterest.forEach((invoker) => {
+          e.preventDefault();
+          clearState(invoker);
+        });
       }
     });
   }
