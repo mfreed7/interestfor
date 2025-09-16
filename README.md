@@ -69,10 +69,10 @@ native feature:
 
   ```css
   [interestfor] {
-    interest-show-delay: 400ms;
-    --interest-show-delay: 400ms;
-    interest-hide-delay: 200ms;
-    --interest-hide-delay: 200ms;
+    interest-delay-start: 400ms;
+    --interest-delay-start: 400ms;
+    interest-delay-end: 200ms;
+    --interest-delay-end: 200ms;
   }
   ```
 

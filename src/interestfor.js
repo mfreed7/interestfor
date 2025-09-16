@@ -165,8 +165,8 @@
         }
         target[targetDataField].invoker = invoker;
         invokersWithInterest.add(invoker);
-        invoker.classList.add("has-interest");
-        target.classList.add("target-of-interest");
+        invoker.classList.add("interest-source");
+        target.classList.add("interest-target");
         restoreFocusable(target);
         break;
       default:
@@ -187,8 +187,8 @@
       } catch {}
       target[targetDataField] = null;
       invokersWithInterest.delete(invoker);
-      invoker.classList.remove("has-interest");
-      target.classList.remove("target-of-interest");
+      invoker.classList.remove("interest-source");
+      target.classList.remove("interest-target");
       restoreFocusable(target);
       data.state = InterestState.NoInterest;
     }
