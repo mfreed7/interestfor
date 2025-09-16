@@ -247,6 +247,19 @@
     }
     const target = GetInterestForTarget(el);
     if (!target) {
+      const containingTarget = el.closest(".interest-target");
+      if (containingTarget) {
+        const upstreamInvoker = GetInterestInvoker(containingTarget);
+        if (upstreamInvoker) {
+          if (source === Source.Hover || source === Source.Focus) {
+            upstreamInvoker[dataField].clearLostTask();
+          } else {
+            if (source === Source.Blur || !el.matches(":hover")) {
+              ScheduleInterestLostTask(upstreamInvoker);
+            }
+          }
+        }
+      }
       return;
     }
     let data = el[dataField];
