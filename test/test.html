@@ -227,10 +227,10 @@ async function waitForHoverOrFocus(type,element,target,timeMilliseconds) {
 async function testOne(invoker, target, type, description) {
   assert_true(true,'---' + description,true);
   assert_false(target.matches(':popover-open'),'popover should start closed',true);
-  invoker.style.setProperty('--interest-show-delay',hoverTimeMilliseconds + 'ms');
-  invoker.style.setProperty('interest-show-delay',hoverTimeMilliseconds + 'ms');
-  invoker.style.setProperty('--interest-hide-delay',hoverTimeMilliseconds + 'ms');
-  invoker.style.setProperty('interest-hide-delay',hoverTimeMilliseconds + 'ms');
+  invoker.style.setProperty('--interest-delay-start',hoverTimeMilliseconds + 'ms');
+  invoker.style.setProperty('interest-delay-start',hoverTimeMilliseconds + 'ms');
+  invoker.style.setProperty('--interest-delay-end',hoverTimeMilliseconds + 'ms');
+  invoker.style.setProperty('interest-delay-end',hoverTimeMilliseconds + 'ms');
   invoker.classList.remove('hide');
 
   // Show interest in the invoker

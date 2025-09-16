@@ -11,8 +11,8 @@
   const attributeName = "interestfor";
   const interestEventName = "interest";
   const loseInterestEventName = "loseinterest";
-  const showDelayProp = "--interest-show-delay";
-  const hideDelayProp = "--interest-hide-delay";
+  const showDelayProp = "--interest-delay-start";
+  const hideDelayProp = "--interest-delay-end";
   const dataField = "__interestForData";
   const targetDataField = "__interestForTargetData";
 
