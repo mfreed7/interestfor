@@ -167,6 +167,12 @@
         invokersWithInterest.add(invoker);
         invoker.classList.add("interest-source");
         target.classList.add("interest-target");
+        const anchorName = `--interest-anchor-${Math.random()
+          .toString(36)
+          .substring(2)}`;
+        invoker.style.anchorName = anchorName;
+        target.style.positionAnchor = anchorName;
+        data.anchorName = anchorName;
         restoreFocusable(target);
         break;
       default:
@@ -189,6 +195,11 @@
       invokersWithInterest.delete(invoker);
       invoker.classList.remove("interest-source");
       target.classList.remove("interest-target");
+      if (data.anchorName) {
+        invoker.style.anchorName = "";
+        target.style.positionAnchor = "";
+        data.anchorName = null;
+      }
       restoreFocusable(target);
       data.state = InterestState.NoInterest;
     }
