@@ -80,19 +80,19 @@ native feature:
   implemented as regular class names, so again add both to your stylesheet:
 
   ```css
-  :is([interestfor]:has-interest),
-  [interestfor].has-interest {
+  :is([interestfor]:interest-source),
+  [interestfor].interest-source {
     /* invoker styles */
   }
-  :is([popover]:target-of-interest),
-  [popover].target-of-interest {
+  :is([popover]:interest-target),
+  [popover].interest-target {
     /* target popover styles */
   }
   ```
 
   Note the `:is()` wrapped around the "normal" selector for the real pseudo
   class names. This is to avoid the entire selector being invalidated if the
-  browser does not recognize the native pseudo class (e.g. `:has-interest`).
+  browser does not recognize the native pseudo class (e.g. `:interest-source`).
 
 
 ## Tests
