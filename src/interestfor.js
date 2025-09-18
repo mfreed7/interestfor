@@ -155,31 +155,36 @@
     const style = getComputedStyle(el);
     const longhandValue = style.getPropertyValue(prop).trim();
 
-    const initialValue =
-      prop === interestDelayStartProp ? "0.5s" : "0.25s";
-
-    if (longhandValue !== initialValue) {
-      return parseTimeValue(longhandValue);
+    // Longhand has priority. If it's not 'normal', use it.
+    if (longhandValue.toLowerCase() !== 'normal') {
+        return parseTimeValue(longhandValue);
     }
 
+    // Longhand is 'normal', so check shorthand. This isn't exactly                                                           │
+    // correct, since the longhand might have been explicitly set to                                                          │
+    // 'normal'.   
     const shorthand = style.getPropertyValue(interestDelayProp).trim();
-    // The initial value for the shorthand is "0.5s 0.25s". If the current value
-    // is the initial value, then there's no point in parsing it, because the
-    // longhand already holds the correct initial value.
-    if (shorthand && shorthand !== "0.5s 0.25s") {
-      const parts = shorthand.split(/\s+/).filter((s) => s.length > 0);
-      if (parts.length > 0) {
-        const firstValue = parts[0];
-        const secondValue = parts.length > 1 ? parts[1] : firstValue;
-        if (prop === interestDelayStartProp) {
-          return parseTimeValue(firstValue);
-        } else {
-          // prop === interestDelayEndProp
-          return parseTimeValue(secondValue);
+    if (shorthand && shorthand.toLowerCase() !== 'normal') {
+        const parts = shorthand.split(/\s+/).filter((s) => s.length > 0);
+        if (parts.length > 0) {
+            const firstValue = parts[0];
+            const secondValue = parts.length > 1 ? parts[1] : firstValue;
+            let valueFromShorthand;
+            if (prop === interestDelayStartProp) {
+                valueFromShorthand = firstValue;
+            } else { // prop === interestDelayEndProp
+                valueFromShorthand = secondValue;
+            }
+
+            // If the value from the shorthand is not 'normal', use it.
+            if (valueFromShorthand.toLowerCase() !== 'normal') {
+                return parseTimeValue(valueFromShorthand);
+            }
         }
-      }
     }
-    return parseTimeValue(longhandValue);
+
+    // If we got here, the effective value is 'normal'. Return the default.
+    return prop === interestDelayStartProp ? 0.5 : 0.25;
   }
 
   // Actual state transitions
@@ -388,9 +393,9 @@
   // CSS registration
   function registerCustomProperties() {
     const style = document.createElement("style");
-    style.textContent = `@property ${interestDelayStartProp} {syntax: "<time>"; inherits: false; initial-value: 0.5s;}
-      @property ${interestDelayEndProp} {syntax: "<time>"; inherits: false; initial-value: 0.25s;}
-      @property ${interestDelayProp} {syntax: "<time>{1,2}"; inherits: false; initial-value: "0.5s 0.25s";}`;
+    style.textContent = `@property ${interestDelayStartProp} {syntax: "normal | <time>"; inherits: false; initial-value: normal;}
+      @property ${interestDelayEndProp} {syntax: "normal | <time>"; inherits: false; initial-value: normal;}
+      @property ${interestDelayProp} {syntax: "[ normal | <time> ]{1,2}"; inherits: false; initial-value: normal;}`;
     document.head.appendChild(style);
     document[dataField] = { globalPropsStyle: style };
   }
