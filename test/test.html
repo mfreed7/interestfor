@@ -224,13 +224,22 @@ async function waitForHoverOrFocus(type,element,target,timeMilliseconds) {
   return {midEvents, midTargetOpen, endEvents: [...events], endTargetOpen: target.matches(':popover-open')};
 }
 
-async function testOne(invoker, target, type, description) {
+async function testOne(invoker, target, type, description, useShorthand = false) {
   assert_true(true,'---' + description,true);
   assert_false(target.matches(':popover-open'),'popover should start closed',true);
-  invoker.style.setProperty('--interest-delay-start',hoverTimeMilliseconds + 'ms');
-  invoker.style.setProperty('interest-delay-start',hoverTimeMilliseconds + 'ms');
-  invoker.style.setProperty('--interest-delay-end',hoverTimeMilliseconds + 'ms');
-  invoker.style.setProperty('interest-delay-end',hoverTimeMilliseconds + 'ms');
+  if (useShorthand) {
+    invoker.style.setProperty('--interest-delay', `${hoverTimeMilliseconds}ms ${hoverTimeMilliseconds}ms`);
+    invoker.style.setProperty('interest-delay', `${hoverTimeMilliseconds}ms ${hoverTimeMilliseconds}ms`);
+    invoker.style.removeProperty('--interest-delay-start');
+    invoker.style.removeProperty('interest-delay-start');
+    invoker.style.removeProperty('--interest-delay-end');
+    invoker.style.removeProperty('interest-delay-end');
+  } else {
+    invoker.style.setProperty('--interest-delay-start',hoverTimeMilliseconds + 'ms');
+    invoker.style.setProperty('interest-delay-start',hoverTimeMilliseconds + 'ms');
+    invoker.style.setProperty('--interest-delay-end',hoverTimeMilliseconds + 'ms');
+    invoker.style.setProperty('interest-delay-end',hoverTimeMilliseconds + 'ms');
+  }
   invoker.classList.remove('hide');
 
   // Show interest in the invoker
@@ -293,6 +302,20 @@ async function testHarness() {
     await testOne(dynamic_invoker,dynamic_target,type,'Dynamically-added elements');
     dynamic_invoker.remove();
     dynamic_target.remove();
+
+    // Dynamically add elements for shorthand test:
+    const shorthand_invoker = document.createElement('a');
+    shorthand_invoker.href = 'foo';
+    shorthand_invoker.setAttribute('interestfor','shorthand_target');
+    shorthand_invoker.classList='hide test-element';
+    const shorthand_target = document.createElement('div');
+    shorthand_target.popover = 'auto';
+    shorthand_target.id = 'shorthand_target';
+    shorthand_target.classList = 'hide';
+    targets.append(shorthand_invoker,shorthand_target);
+    await testOne(shorthand_invoker,shorthand_target,type,'Dynamically-added elements (shorthand)', true);
+    shorthand_invoker.remove();
+    shorthand_target.remove();
   }
 
   // Test complete
