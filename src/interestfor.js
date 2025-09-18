@@ -167,13 +167,15 @@
         invokersWithInterest.add(invoker);
         invoker.classList.add("interest-source");
         target.classList.add("interest-target");
+        if (!isPlainHint(target)) {
+          invoker.setAttribute("aria-expanded", "true");
+        }
         const anchorName = `--interest-anchor-${Math.random()
           .toString(36)
           .substring(2)}`;
         invoker.style.anchorName = anchorName;
         target.style.positionAnchor = anchorName;
         data.anchorName = anchorName;
-        restoreFocusable(target);
         break;
       default:
         throw new Error("Invalid state");
@@ -195,12 +197,14 @@
       invokersWithInterest.delete(invoker);
       invoker.classList.remove("interest-source");
       target.classList.remove("interest-target");
+      if (!isPlainHint(target)) {
+        invoker.setAttribute("aria-expanded", "false");
+      }
       if (data.anchorName) {
         invoker.style.anchorName = "";
         target.style.positionAnchor = "";
         data.anchorName = null;
       }
-      restoreFocusable(target);
       data.state = InterestState.NoInterest;
     }
   }
@@ -219,26 +223,45 @@
     "[contenteditable]",
     '[tabindex]:not([tabindex="-1"])',
   ].join(",");
-  function disableFocusable(root) {
-    root.querySelectorAll(focusableSelector).forEach((el) => {
-      if (el.hasAttribute("data-original-tabindex")) {
-        return;
+
+  // Accessibility utilities
+  function isPlainHint(target) {
+    if (target.getAttribute("popover")?.toLowerCase() !== "hint") {
+      return false;
+    }
+    // Anything focusable is not plain.
+    if (target.querySelector(focusableSelector)) {
+      return false;
+    }
+    // Common structural/semantic elements that are not focusable.
+    const structuralSelector =
+      "h1,h2,h3,h4,h5,h6,ul,ol,li,table,nav,header,footer,main,aside,article,section,form,blockquote,details,summary,dialog";
+    if (target.querySelector(structuralSelector)) {
+      return false;
+    }
+    // Check for ARIA roles.
+    const elementsWithRoles = target.querySelectorAll("[role]");
+    for (const el of elementsWithRoles) {
+      const role = el.getAttribute("role").toLowerCase();
+      // Allowed roles are those that don't add semantics for a screen reader to explore.
+      if (!["presentation", "none", "generic", "image"].includes(role)) {
+        return false;
       }
-      const orig = el.getAttribute("tabindex");
-      el.setAttribute("data-original-tabindex", orig === null ? "none" : orig);
-      el.setAttribute("tabindex", "-1");
-    });
+    }
+    return true;
   }
-  function restoreFocusable(root) {
-    root.querySelectorAll("[data-original-tabindex]").forEach((el) => {
-      const orig = el.getAttribute("data-original-tabindex");
-      if (orig === "none") {
-        el.removeAttribute("tabindex");
-      } else {
-        el.setAttribute("tabindex", orig);
+
+  function setupAccessibility(invoker, target) {
+    if (isPlainHint(target)) {
+      invoker.setAttribute("aria-describedby", target.id);
+    } else {
+      // Rich hint
+      invoker.setAttribute("aria-details", target.id);
+      invoker.setAttribute("aria-expanded", "false");
+      if (!target.hasAttribute("role")) {
+        target.setAttribute("role", "tooltip");
       }
-      el.removeAttribute("data-original-tabindex");
-    });
+    }
   }
 
   function HandleInterestHoverOrFocus(el, source) {
@@ -276,6 +299,7 @@
         },
       };
       data = el[dataField];
+      setupAccessibility(el, target);
     }
     const upstreamInvoker = GetInterestInvoker(el);
 
