@@ -1,8 +1,10 @@
 # `interestfor` Polyfill
 
-A polyfill for the `interestfor` attribute. This is an emerging standard for
-an API that hopes to be implemented in browsers. See the explainer for all of
-the details for the "real" feature:
+A polyfill for the `interestfor` attribute. This is a new API for "interest
+interactions" that is in the process of being implemented in browsers. It will
+[likely ship soon in
+Chrome](https://groups.google.com/a/chromium.org/g/blink-dev/c/bX1G_yDt6W4?e=48417069).
+See the explainer for all of the details for the "real" feature:
 
   https://open-ui.org/components/interest-invokers.explainer/
 
@@ -83,9 +85,7 @@ native feature:
     --interest-delay: 400ms 200ms;
   }
   /* The keyword `normal` can also be used to specify the default delay: */
-  [interestfor].no-show-delay {
-    interest-delay-start: 0s;
-    --interest-delay-start: 0s;
+  [interestfor] {
     interest-delay-end: normal;
     --interest-delay-end: normal;
   }
