@@ -54,6 +54,7 @@
     DeHover: "dehover",
     Focus: "focus",
     Blur: "blur",
+    Touch: "touch",
   };
 
   // Gain or lose interest
@@ -305,6 +306,26 @@
     }
   }
 
+  function initializeDataField(el) {
+    if (el[dataField]) return;
+    el[dataField] = {
+      state: InterestState.NoInterest,
+      gainedTimer: null,
+      lostTimer: null,
+      longPressTimer: null,
+      clearGainedTask() {
+        clearTimeout(this.gainedTimer);
+      },
+      clearLostTask() {
+        clearTimeout(this.lostTimer);
+      },
+    };
+    const target = GetInterestForTarget(el);
+    if (target) {
+      setupAccessibility(el, target);
+    }
+  }
+
   function HandleInterestHoverOrFocus(el, source) {
     if (!el.isConnected) {
       return;
@@ -326,22 +347,8 @@
       }
       return;
     }
-    let data = el[dataField];
-    if (!data) {
-      el[dataField] = {
-        state: InterestState.NoInterest,
-        gainedTimer: null,
-        lostTimer: null,
-        clearGainedTask() {
-          clearTimeout(this.gainedTimer);
-        },
-        clearLostTask() {
-          clearTimeout(this.lostTimer);
-        },
-      };
-      data = el[dataField];
-      setupAccessibility(el, target);
-    }
+    initializeDataField(el);
+    const data = el[dataField];
     const upstreamInvoker = GetInterestInvoker(el);
 
     // Hover or focus
@@ -383,11 +390,31 @@
     document.body.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         invokersWithInterest.forEach((invoker) => {
-          e.preventDefault();
           clearState(invoker);
         });
       }
     });
+    // Touch support
+    const longPressTime = 500;
+    document.body.addEventListener("touchstart", (e) => {
+      const invoker = e.target.closest("button[interestfor]");
+      if (invoker) {
+        initializeDataField(invoker);
+        invoker[dataField].longPressTimer = setTimeout(() => {
+          GainOrLoseInterest(invoker, GetInterestForTarget(invoker), InterestState.FullInterest);
+          invoker[dataField].longPressTimer = null;
+        }, longPressTime);
+      }
+    });
+    const cancelLongPress = (e) => {
+      const invoker = e.target.closest("button[interestfor]");
+      if (invoker && invoker[dataField]?.longPressTimer) {
+        clearTimeout(invoker[dataField].longPressTimer);
+        invoker[dataField].longPressTimer = null;
+      }
+    };
+    document.body.addEventListener("touchend", cancelLongPress);
+    document.body.addEventListener("touchmove", cancelLongPress);
   }
 
   // CSS registration
