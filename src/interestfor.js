@@ -11,8 +11,9 @@
   const attributeName = "interestfor";
   const interestEventName = "interest";
   const loseInterestEventName = "loseinterest";
-  const showDelayProp = "--interest-delay-start";
-  const hideDelayProp = "--interest-delay-end";
+  const interestDelayStartProp = "--interest-delay-start";
+  const interestDelayEndProp = "--interest-delay-end";
+  const interestDelayProp = "--interest-delay";
   const dataField = "__interestForData";
   const targetDataField = "__interestForTargetData";
   const invokersWithInterest = new Set();
@@ -100,7 +101,7 @@
 
   // Schedule tasks
   function ScheduleInterestGainedTask(invoker, newState) {
-    const delay = getDelaySeconds(invoker, showDelayProp) * 1000;
+    const delay = getDelaySeconds(invoker, interestDelayStartProp) * 1000;
     if (!isFinite(delay) || delay < 0) {
       return;
     }
@@ -111,7 +112,7 @@
   }
 
   function ScheduleInterestLostTask(invoker) {
-    const delay = getDelaySeconds(invoker, hideDelayProp) * 1000;
+    const delay = getDelaySeconds(invoker, interestDelayEndProp) * 1000;
     if (!isFinite(delay) || delay < 0) {
       return;
     }
@@ -137,13 +138,48 @@
     return document.getElementById(id);
   }
 
-  function getDelaySeconds(el, prop) {
-    const raw = getComputedStyle(el).getPropertyValue(prop).trim();
-    const m = raw.match(/^([\d.]+)s$/);
-    if (m) {
-      return parseFloat(m[1]);
+  function parseTimeValue(val) {
+    const s = String(val).trim();
+    const m_s = s.match(/^([\d.]+)s$/);
+    if (m_s) {
+      return parseFloat(m_s[1]);
     }
-    return parseFloat(raw) || 0;
+    const m_ms = s.match(/^([\d.]+)ms$/);
+    if (m_ms) {
+      return parseFloat(m_ms[1]) / 1000;
+    }
+    return parseFloat(s) || 0;
+  }
+
+  function getDelaySeconds(el, prop) {
+    const style = getComputedStyle(el);
+    const longhandValue = style.getPropertyValue(prop).trim();
+
+    const initialValue =
+      prop === interestDelayStartProp ? "0.5s" : "0.25s";
+
+    if (longhandValue !== initialValue) {
+      return parseTimeValue(longhandValue);
+    }
+
+    const shorthand = style.getPropertyValue(interestDelayProp).trim();
+    // The initial value for the shorthand is "0.5s 0.25s". If the current value
+    // is the initial value, then there's no point in parsing it, because the
+    // longhand already holds the correct initial value.
+    if (shorthand && shorthand !== "0.5s 0.25s") {
+      const parts = shorthand.split(/\s+/).filter((s) => s.length > 0);
+      if (parts.length > 0) {
+        const firstValue = parts[0];
+        const secondValue = parts.length > 1 ? parts[1] : firstValue;
+        if (prop === interestDelayStartProp) {
+          return parseTimeValue(firstValue);
+        } else {
+          // prop === interestDelayEndProp
+          return parseTimeValue(secondValue);
+        }
+      }
+    }
+    return parseTimeValue(longhandValue);
   }
 
   // Actual state transitions
@@ -352,8 +388,9 @@
   // CSS registration
   function registerCustomProperties() {
     const style = document.createElement("style");
-    style.textContent = `@property ${showDelayProp} {syntax: "<time>"; inherits: false; initial-value: 0.5s;}
-      @property ${hideDelayProp} {syntax: "<time>"; inherits: false; initial-value: 0.5s;}`;
+    style.textContent = `@property ${interestDelayStartProp} {syntax: "<time>"; inherits: false; initial-value: 0.5s;}
+      @property ${interestDelayEndProp} {syntax: "<time>"; inherits: false; initial-value: 0.25s;}
+      @property ${interestDelayProp} {syntax: "<time>{1,2}"; inherits: false; initial-value: "0.5s 0.25s";}`;
     document.head.appendChild(style);
     document[dataField] = { globalPropsStyle: style };
   }

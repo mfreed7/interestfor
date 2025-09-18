@@ -74,6 +74,11 @@ native feature:
     interest-delay-end: 200ms;
     --interest-delay-end: 200ms;
   }
+  /* Or, use the shorthand: */
+  [interestfor] {
+    interest-delay: 400ms 200ms;
+    --interest-delay: 400ms 200ms;
+  }
   ```
 
 - The CSS pseudo classes for detecting invoker and target interest states are
@@ -108,7 +113,6 @@ from this repo,
 
 These things are currently not handled correctly by this polyfill:
 
-- There is no support for the `--interest-delay` shorthand.
 - There is no touchscreen support, as mentioned above.
 
 ## Improvements / Bugs
