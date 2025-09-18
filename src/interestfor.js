@@ -139,6 +139,16 @@
     return document.getElementById(id);
   }
 
+  function onPopoverToggle(e) {
+    const popover = e.target;
+    if (e.newState === 'closed') {
+      const invoker = popover[targetDataField]?.invoker;
+      if (invoker) {
+        GainOrLoseInterest(invoker, popover, InterestState.NoInterest);
+      }
+    }
+  }
+
   function parseTimeValue(val) {
     const s = String(val).trim();
     const m_s = s.match(/^([\d.]+)s$/);
@@ -206,6 +216,10 @@
           target[targetDataField] = {};
         }
         target[targetDataField].invoker = invoker;
+        if (target.hasAttribute('popover')) {
+          target[targetDataField].toggleListener = onPopoverToggle;
+          target.addEventListener('toggle', onPopoverToggle);
+        }
         invokersWithInterest.add(invoker);
         invoker.classList.add("interest-source");
         target.classList.add("interest-target");
@@ -235,6 +249,9 @@
       try {
         target.hidePopover();
       } catch {}
+      if (target[targetDataField]?.toggleListener) {
+        target.removeEventListener('toggle', target[targetDataField].toggleListener);
+      }
       target[targetDataField] = null;
       invokersWithInterest.delete(invoker);
       invoker.classList.remove("interest-source");

@@ -4,3 +4,18 @@
 
 <a interestfor=foo href=bar>Link - hover me, don't click me</a>
 <div popover id=foo>Popover</div>
+
+<style>
+  [interestfor] {
+    interest-delay: 600ms 300ms;
+    --interest-delay: 600ms 300ms;
+  }
+  :is([interestfor]:interest-source),
+  [interestfor].interest-source {
+    background-color: lightgreen;
+  }
+  :is([popover]:interest-target),
+  [popover].interest-target {
+    background-color: lightblue;
+  }
+</style>
