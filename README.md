@@ -79,6 +79,13 @@ native feature:
     interest-delay: 400ms 200ms;
     --interest-delay: 400ms 200ms;
   }
+  /* The keyword `normal` can also be used to specify the default delay: */
+  [interestfor].no-show-delay {
+    interest-delay-start: 0s;
+    --interest-delay-start: 0s;
+    interest-delay-end: normal;
+    --interest-delay-end: normal;
+  }
   ```
 
 - The CSS pseudo classes for detecting invoker and target interest states are
