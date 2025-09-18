@@ -29,18 +29,21 @@ upon receiving and losing interest.
 Again, this is a quick summary. For the complete details, please [read the
 explainer](https://open-ui.org/components/interest-invokers.explainer).
 
-## Touchscreen not supported
+## Touchscreen support
 
-This polyfill will not provide touchscreen users with any way to show interest
-in the invoker, because on touchscreen, long-press is the user-understood way to
-"show interest" in an element. On today's browsers, long-pressing a link element
-brings up a useful context menu that contains items like "Share" and "Open in
-new tab". In order for the polyfill to support interest on mobile, that context
-menu would need to be surpressed completely. There is currently no way to
-provide access to the long-press context menu and *also* provide a way to show
-interest. Since the context menu contains items that users often use,
-eliminating access to the context menu is not what most developers want. So
-this polyfill does nothing on mobile touchscreen.
+This polyfill provides limited touchscreen support. On a touchscreen,
+long-pressing a `<button>` element that has an `interestfor` attribute will show
+interest in the target.
+
+However, long-pressing a link (`<a>` element) is **not** supported. This is
+because on today's browsers, long-pressing a link element brings up a useful
+context menu that contains items like "Share" and "Open in new tab". In order
+for the polyfill to support interest on links, that context menu would need to
+be surpressed completely. There is currently no way to provide access to the
+long-press context menu and *also* provide a way to show interest. Since the
+context menu contains items that users often use, eliminating access to the
+context menu is not what most people want. So this polyfill will not support
+long-press on links.
 
 This is one of the primary motivations for Chromium championing this as a
 native API in all browsers: to support all users, including those using
@@ -115,12 +118,6 @@ cannot be done programmatically. The test is capable of testing either the
 polyfill (optionally minified) or the native feature. You can run tests directly
 from this repo,
 [here](https://mfreed7.github.io/interestfor/test/test.html).
-
-## Things that don't (yet?) work
-
-These things are currently not handled correctly by this polyfill:
-
-- There is no touchscreen support, as mentioned above.
 
 ## Improvements / Bugs
 
