@@ -17,6 +17,7 @@
   const dataField = "__interestForData";
   const targetDataField = "__interestForTargetData";
   const invokersWithInterest = new Set();
+  let touchInProgress = false;
 
   // Feature detection
   if (window.interestForPolyfillInstalled) {
@@ -344,6 +345,9 @@
   }
 
   function HandleInterestHoverOrFocus(el, source) {
+    if (touchInProgress) {
+      return;
+    }
     if (!el.isConnected) {
       return;
     }
@@ -414,6 +418,7 @@
     // Touch support
     const longPressTime = 500;
     document.body.addEventListener("touchstart", (e) => {
+      touchInProgress = true;
       const invoker = e.target.closest("button[interestfor]");
       if (invoker) {
         initializeDataField(invoker);
@@ -430,7 +435,10 @@
         invoker[dataField].longPressTimer = null;
       }
     };
-    document.body.addEventListener("touchend", cancelLongPress);
+    document.body.addEventListener("touchend", (e) => {
+      cancelLongPress(e);
+      touchInProgress = false;
+    });
     document.body.addEventListener("touchmove", cancelLongPress);
   }
 
