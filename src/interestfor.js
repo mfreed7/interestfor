@@ -396,18 +396,15 @@
 
   // Attach listeners
   function addEventHandlers() {
-    document.body.addEventListener("mouseover", (e) =>
-      HandleInterestHoverOrFocus(e.target, Source.Hover)
-    );
-    document.body.addEventListener("mouseout", (e) =>
-      HandleInterestHoverOrFocus(e.target, Source.DeHover)
-    );
-    document.body.addEventListener("focusin", (e) =>
-      HandleInterestHoverOrFocus(e.target, Source.Focus)
-    );
-    document.body.addEventListener("focusout", (e) =>
-      HandleInterestHoverOrFocus(e.target, Source.Blur)
-    );
+    const handler = (e, source) => {
+      for (let el = e.target; el; el = el.parentElement) {
+        HandleInterestHoverOrFocus(el, source);
+      }
+    };
+    document.body.addEventListener("mouseover", (e) => handler(e, Source.Hover));
+    document.body.addEventListener("mouseout", (e) => handler(e, Source.DeHover));
+    document.body.addEventListener("focusin", (e) => handler(e, Source.Focus));
+    document.body.addEventListener("focusout", (e) => handler(e, Source.Blur));
     document.body.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         invokersWithInterest.forEach((invoker) => {
