@@ -119,6 +119,11 @@ polyfill (optionally minified) or the native feature. You can run tests directly
 from this repo,
 [here](https://mfreed7.github.io/interestfor/test/test.html).
 
+## Browser Compatibility
+
+This polyfill uses all standard APIs, and is therefore compatible with all
+modern browsers, including Safari and Firefox.
+
 ## Improvements / Bugs
 
 If you find issues with the polyfill, feel free to file them [here](https://github.com/mfreed7/interestfor/issues).
