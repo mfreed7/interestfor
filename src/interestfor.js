@@ -227,12 +227,15 @@
         if (!isPlainHint(target)) {
           invoker.setAttribute("aria-expanded", "true");
         }
-        const anchorName = `--interest-anchor-${Math.random()
-          .toString(36)
-          .substring(2)}`;
-        invoker.style.anchorName = anchorName;
-        target.style.positionAnchor = anchorName;
-        data.anchorName = anchorName;
+        if (getComputedStyle(invoker).anchorName === 'none' &&
+            getComputedStyle(target).positionAnchor === 'auto') {
+          const anchorName = `--interest-anchor-${Math.random()
+            .toString(36)
+            .substring(2)}`;
+          invoker.style.anchorName = anchorName;
+          target.style.positionAnchor = anchorName;
+          data.anchorName = anchorName;
+        }
         break;
       default:
         throw new Error("Invalid state");
