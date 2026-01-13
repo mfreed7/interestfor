@@ -208,7 +208,9 @@
         if (data.state !== InterestState.NoInterest) {
           throw new Error("Invalid state");
         }
-        target.dispatchEvent(new Event(interestEventName));
+        let evt = new Event(interestEventName);
+        evt.source = invoker
+        target.dispatchEvent(evt);
         try {
           target.showPopover({ source: invoker });
         } catch {}
@@ -249,7 +251,9 @@
     clearTimeout(data.lostTimer);
     if (data.state !== InterestState.NoInterest) {
       const target = GetInterestForTarget(invoker);
-      target.dispatchEvent(new Event(loseInterestEventName));
+      let evt = new Event(loseInterestEventName);
+      evt.source = invoker
+      target.dispatchEvent(evt)
       try {
         target.hidePopover();
       } catch {}
