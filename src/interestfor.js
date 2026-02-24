@@ -62,9 +62,6 @@
       }
 
       get source() {
-        if (!this.#source) {
-          throw new TypeError("illegal invocation");
-        }
         const source = this.#source;
         if (!(source instanceof Element)) return null;
         // Retarget `source` to the current event's root:
