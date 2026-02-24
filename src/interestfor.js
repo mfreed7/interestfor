@@ -281,14 +281,14 @@
     return true;
   }
 
-  function clearState(invoker) {
+  function clearState(invoker, force = false) {
     const data = invoker[dataField];
     clearTimeout(data.gainedTimer);
     clearTimeout(data.lostTimer);
     if (data.state !== InterestState.NoInterest) {
       const target = GetInterestForTarget(invoker);
       const shouldContinue = target.dispatchEvent(new InterestEvent(loseInterestEventName, { source: invoker }));
-      if (!shouldContinue) return;
+      if (!force && !shouldContinue) return;
       try {
         target.hidePopover();
       } catch {}
@@ -450,7 +450,7 @@
     document.body.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         invokersWithInterest.forEach((invoker) => {
-          clearState(invoker);
+          clearState(invoker, force);
         });
       }
     });
