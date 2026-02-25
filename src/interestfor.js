@@ -63,7 +63,7 @@
 
       get source() {
         const source = this.#source;
-        if (!(source instanceof Element)) return null;
+        if (!source) return null;
         // Retarget `source` to the current event's root:
         const sourceRoot = getRootNode(source);
         if (sourceRoot !== getRootNode(this.target || document)) {
@@ -450,7 +450,7 @@
     document.body.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         invokersWithInterest.forEach((invoker) => {
-          clearState(invoker, force);
+          clearState(invoker, true);
         });
       }
     });
