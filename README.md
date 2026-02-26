@@ -1,12 +1,11 @@
 # `interestfor` Polyfill
 
 A polyfill for the `interestfor` attribute. This is a new API for "interest
-interactions" that is in the process of being implemented in browsers. It will
-[likely ship soon in
-Chrome](https://groups.google.com/a/chromium.org/g/blink-dev/c/bX1G_yDt6W4?e=48417069).
-See the explainer for all of the details for the "real" feature:
+interactions" that is in the process of being implemented in browsers. It [shipped](https://chromestatus.com/feature/4530756656562176)
+in Chromium browsers (e.g. Chrome, Edge) in version 142 (October 2025).
+See the MDN documentation for more details:
 
-  https://open-ui.org/components/interest-invokers.explainer/
+https://developer.mozilla.org/en-US/docs/Web/API/Popover_API/Using_interest_invokers
 
 ## Usage
 To use this polyfill, simply load it:
