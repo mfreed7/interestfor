@@ -44,6 +44,35 @@
       capture: true,
     });
   }
+  
+  if(!window.InterestEvent) {
+    window.InterestEvent = class InterestEvent extends Event {
+      #source;
+      constructor(type, eventInit = {}) {
+        super(type, eventInit);
+        const { source } = eventInit;
+        if (source != null && !(source instanceof Element)) {
+          throw new TypeError(`source must be an element`);
+        }
+        this.#source = source;
+      }
+
+      get [Symbol.toStringTag]() {
+        return "InterestEvent";
+      }
+
+      get source() {
+        const source = this.#source;
+        if (!source) return null;
+        // Retarget `source` to the current event's root:
+        const sourceRoot = getRootNode(source);
+        if (sourceRoot !== getRootNode(this.target || document)) {
+          return sourceRoot.host;
+        }
+        return source;
+      }
+    }
+  }
 
   // Enum-like state and source
   const InterestState = {
@@ -57,6 +86,14 @@
     Blur: "blur",
     Touch: "touch",
   };
+
+  function getRootNode(node) {
+    if (node && typeof node.getRootNode === "function") {
+      return node.getRootNode();
+    }
+    if (node && node.parentNode) return getRootNode(node.parentNode);
+    return node;
+  }
 
   // Gain or lose interest
   function GainOrLoseInterest(invoker, target, newState) {
@@ -208,7 +245,8 @@
         if (data.state !== InterestState.NoInterest) {
           throw new Error("Invalid state");
         }
-        target.dispatchEvent(new Event(interestEventName));
+        const shouldContinue = target.dispatchEvent(new InterestEvent(interestEventName, { source: invoker }));
+        if (!shouldContinue) return;
         try {
           target.showPopover({ source: invoker });
         } catch {}
@@ -243,13 +281,14 @@
     return true;
   }
 
-  function clearState(invoker) {
+  function clearState(invoker, force = false) {
     const data = invoker[dataField];
     clearTimeout(data.gainedTimer);
     clearTimeout(data.lostTimer);
     if (data.state !== InterestState.NoInterest) {
       const target = GetInterestForTarget(invoker);
-      target.dispatchEvent(new Event(loseInterestEventName));
+      const shouldContinue = target.dispatchEvent(new InterestEvent(loseInterestEventName, { source: invoker }));
+      if (!force && !shouldContinue) return;
       try {
         target.hidePopover();
       } catch {}
@@ -411,7 +450,7 @@
     document.body.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         invokersWithInterest.forEach((invoker) => {
-          clearState(invoker);
+          clearState(invoker, true);
         });
       }
     });

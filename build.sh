@@ -11,7 +11,7 @@ MINIFIED_FILE="${BUILD_DIR}/interestfor.min.js"
 OUTPUT_FILE="${SRC_DIR}/interestfor.min.js"
 
 # Minify the combined file
-terser "${SOURCE_FILE}" --compress --mangle --output "${MINIFIED_FILE}"
+npx terser "${SOURCE_FILE}" --compress --mangle --output "${MINIFIED_FILE}"
 
 cat COPYRIGHT "${MINIFIED_FILE}" > "${OUTPUT_FILE}"
 

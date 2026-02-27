@@ -1,6 +1,6 @@
 {
   "name": "interestfor",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A polyfill for the `interestfor` API",
   "keywords": "interestfor, interesttarget, polyfill, hover-triggering",
   "homepage": "https://github.com/mfreed7/interestfor#readme",
@@ -11,7 +11,5 @@
   },
   "author": "Mason Freed <mfreed@mfreed.com>",
   "license": "BSD-3-Clause",
-  "main": "src/interestfor.min.js",
-  "dependencies": {}
+  "main": "src/interestfor.min.js"
 }
-
