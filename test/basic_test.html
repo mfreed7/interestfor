@@ -4,8 +4,12 @@
 
 <a interestfor=foo href=bar>Link - hover me, don't click me</a>
 <button interestfor=foo>
-  <span style="margin:10px;">Button - hover me, don't click me</span></a>
+  <span style="margin:10px;">Button - hover me, don't click me</span></button>
 <div popover id=foo>Popover</div>
+<p>
+  <a interestfor=bar href=bar class=with-button>Link with an interest button - click the "?"</a>
+</p>
+<div popover id=bar>Popover shown by the interest button</div>
 
 <style>
   [interestfor] {
@@ -22,5 +26,13 @@
   }
   [popover] {
     position-area: right center;
+  }
+  /* Native ::interest-button */
+  .with-button::interest-button {
+    content: "?";
+  }
+  /* Polyfilled ::interest-button */
+  .with-button {
+    --interest-button-content: "?";
   }
 </style>

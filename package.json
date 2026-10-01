@@ -1,6 +1,6 @@
 {
   "name": "interestfor",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "A polyfill for the `interestfor` API",
   "keywords": "interestfor, interesttarget, polyfill, hover-triggering",
   "homepage": "https://github.com/mfreed7/interestfor#readme",
