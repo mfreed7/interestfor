@@ -935,9 +935,12 @@
   // CSS registration
   function registerCustomProperties() {
     const style = document.createElement("style");
+    // `@property` syntax can't express "one or two of `normal | <time>`", so
+    // the shorthand uses the universal syntax. It is still registered, so that
+    // it doesn't inherit.
     style.textContent = `@property ${interestDelayStartProp} {syntax: "normal | <time>"; inherits: false; initial-value: normal;}
       @property ${interestDelayEndProp} {syntax: "normal | <time>"; inherits: false; initial-value: normal;}
-      @property ${interestDelayProp} {syntax: "[ normal | <time> ]{1,2}"; inherits: false; initial-value: normal;}
+      @property ${interestDelayProp} {syntax: "*"; inherits: false;}
       @property ${interestButtonContentProp} {syntax: "*"; inherits: false;}`;
     document.head.appendChild(style);
     // Equivalents of the UA stylesheet rules for interest invokers. These are
