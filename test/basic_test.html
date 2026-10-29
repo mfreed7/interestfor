@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.4">
 
 <div>
   <a interestfor=foo href=bar>Link - hover me</a>
@@ -35,7 +35,7 @@
     position-area: bottom center;
     margin: 10px 0 0 0;
   }
-  div { margin: 10px; }
+  div { margin: 10px; padding: 7.5px 0; }
   /* Polyfilled ::interest-button */
   [interestfor] {
     --interest-button-content: "\24D8";
@@ -54,7 +54,18 @@
     </select>
   </label>
 </div>
+<div id="nav_msg"></div>
 <script>
+  let navTimer;
+  document.querySelector("a[interestfor]").addEventListener("click", (e) => {
+    e.preventDefault();
+    const msg = document.getElementById("nav_msg");
+    msg.textContent = "would have navigated";
+    clearTimeout(navTimer);
+    navTimer = setTimeout(() => {
+      msg.textContent = "";
+    }, 1000);
+  });
   const mode = new URLSearchParams(location.search).get("mode") || "polyfill";
   const select = document.getElementById("mode");
   select.value = mode;
