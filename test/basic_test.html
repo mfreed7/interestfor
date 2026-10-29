@@ -64,7 +64,7 @@
   if (mode === "polyfill") {
     window.interestForUsePolyfillAlways = true;
     const s = document.createElement("script");
-    s.src = "../src/interestfor.js";
+    s.src = `../src/interestfor.js?v=${Date.now()}`;
     document.head.appendChild(s);
   }
 </script>
