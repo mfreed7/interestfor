@@ -1,112 +1,8 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-
-
-<style>
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    margin: 20px;
-    color: #222;
-  }
-  header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-  }
-  header h2 {
-    margin: 0;
-  }
-  #summary {
-    padding: 10px 14px;
-    border-radius: 6px;
-    font-weight: 600;
-    margin-bottom: 16px;
-  }
-  .pass-bg {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-  }
-  .fail-bg {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-  }
-  .running-bg {
-    background-color: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-  }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    max-width: 960px;
-    font-size: 14px;
-  }
-  th, td {
-    border: 1px solid #ddd;
-    padding: 6px 10px;
-    text-align: left;
-  }
-  th {
-    background: #f5f5f5;
-  }
-  td.status {
-    width: 60px;
-    font-weight: 600;
-    text-align: center;
-  }
-  td.pass {
-    background-color: #d4edda;
-    color: #155724;
-  }
-  td.fail {
-    background-color: #f8d7da;
-    color: #721c24;
-  }
-  tr.section-row td {
-    background-color: #eef2f7;
-    font-weight: 600;
-    padding-top: 10px;
-  }
-  .error-detail {
-    color: #721c24;
-    font-family: monospace;
-    font-size: 12px;
-    margin-top: 4px;
-    white-space: pre-wrap;
-  }
-  #sandbox {
-    position: fixed;
-    top: -9999px;
-    left: -9999px;
-  }
-</style>
-
-<header>
-  <h2>Interestfor Polyfill Automated Test Suite</h2>
-  <label>
-    Target:
-    <select id="target_select">
-      <option value="src">src/interestfor.js</option>
-      <option value="min">src/interestfor.min.js</option>
-    </select>
-  </label>
-  <button id="rerun" type="button">Re-run</button>
-</header>
-
-<div id="summary" class="running-bg">Running tests...</div>
-<table>
-  <thead>
-    <tr>
-      <th>Status</th>
-      <th>Test</th>
-    </tr>
-  </thead>
-  <tbody id="log"></tbody>
-</table>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="author" href="mailto:masonf@chromium.org">
+<link rel="help" href="https://open-ui.org/components/interest-invokers.explainer/">
 
 <!-- Pre-existing elements in the initial HTML to verify eager page-load setup -->
 <div id="preexisting_fixture" style="position:fixed;top:-9999px;left:-9999px">
@@ -139,188 +35,8 @@
   <div id="pre_tip_rich" popover="auto"><a href="#details">View profile</a></div>
 </div>
 
-<div id="sandbox"></div>
-
 <script>
-const params = new URLSearchParams(location.search);
-const targetMode = params.get("target") === "min" ? "min" : "src";
-const targetSelect = document.getElementById("target_select");
-targetSelect.value = targetMode;
-targetSelect.addEventListener("change", () => {
-  const url = new URL(location.href);
-  url.searchParams.set("target", targetSelect.value);
-  location.href = url.toString();
-});
-document.getElementById("rerun").addEventListener("click", () => location.reload());
-
-// Force the polyfill to install even in browsers with native support.
-window.interestForUsePolyfillAlways = true;
-const polyfillScript = document.createElement("script");
-polyfillScript.src = targetMode === "min" ? "../src/interestfor.min.js" : "../src/interestfor.js";
-const polyfillLoaded = new Promise((resolve, reject) => {
-  polyfillScript.onload = resolve;
-  polyfillScript.onerror = () => reject(new Error(`Failed to load ${polyfillScript.src}`));
-});
-document.head.appendChild(polyfillScript);
-
-// Minimal test harness
-const logBody = document.getElementById("log");
-const sandbox = document.getElementById("sandbox");
-let totalCount = 0;
-let passCount = 0;
-let failCount = 0;
-
-function section(title) {
-  const tr = document.createElement("tr");
-  tr.className = "section-row";
-  const td = document.createElement("td");
-  td.colSpan = 2;
-  td.textContent = title;
-  tr.appendChild(td);
-  logBody.appendChild(tr);
-}
-
-function recordResult(name, passed, errorMsg) {
-  totalCount++;
-  if (passed) {
-    passCount++;
-  } else {
-    failCount++;
-  }
-  const tr = document.createElement("tr");
-  const statusTd = document.createElement("td");
-  statusTd.className = `status ${passed ? "pass" : "fail"}`;
-  statusTd.textContent = passed ? "PASS" : "FAIL";
-  const nameTd = document.createElement("td");
-  nameTd.textContent = name;
-  if (!passed && errorMsg) {
-    const detail = document.createElement("div");
-    detail.className = "error-detail";
-    detail.textContent = errorMsg;
-    nameTd.appendChild(detail);
-  }
-  tr.append(statusTd, nameTd);
-  logBody.appendChild(tr);
-}
-
-async function test(name, fn) {
-  sandbox.replaceChildren();
-  try {
-    await fn();
-    recordResult(name, true);
-  } catch (err) {
-    console.error(`FAIL: ${name}`, err);
-    recordResult(name, false, err && err.message ? err.message : String(err));
-  } finally {
-    sandbox.replaceChildren();
-  }
-}
-
-function assert_true(cond, msg = "expected true") {
-  if (!cond) {
-    throw new Error(msg);
-  }
-}
-
-function assert_false(cond, msg = "expected false") {
-  if (cond) {
-    throw new Error(msg);
-  }
-}
-
-function assert_equals(actual, expected, msg = "") {
-  if (!Object.is(actual, expected)) {
-    const prefix = msg ? `${msg}: ` : "";
-    throw new Error(`${prefix}expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
-  }
-}
-
-function assert_array_equals(actual, expected, msg = "") {
-  assert_equals(actual.length, expected.length, `${msg} (length)`);
-  for (let i = 0; i < expected.length; i++) {
-    assert_equals(actual[i], expected[i], `${msg} (index ${i})`);
-  }
-}
-
-function assert_throws_js(ErrorConstructor, fn, msg = "") {
-  let threw = false;
-  try {
-    fn();
-  } catch (e) {
-    threw = true;
-    assert_true(
-      e instanceof ErrorConstructor,
-      `${msg}: expected ${ErrorConstructor.name}, got ${e}`
-    );
-  }
-  assert_true(threw, `${msg}: expected ${ErrorConstructor.name} to be thrown`);
-}
-
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const nextTick = () => wait(0);
-
-function hover(el) {
-  el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, composed: true }));
-}
-function dehover(el) {
-  el.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, composed: true }));
-}
-function focusIn(el) {
-  el.dispatchEvent(new FocusEvent("focusin", { bubbles: true, composed: true }));
-}
-function focusOut(el) {
-  el.dispatchEvent(new FocusEvent("focusout", { bubbles: true, composed: true }));
-}
-function pressEscape(target = document.body) {
-  return target.dispatchEvent(
-    new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })
-  );
-}
-
-function createPair({
-  invokerTag = "button",
-  invokerAttrs = {},
-  invokerHTML = "Invoker",
-  targetId = "t_" + Math.random().toString(36).slice(2),
-  popoverType = "auto",
-  targetHTML = "Target content",
-  delayStart = "15ms",
-  delayEnd = "15ms",
-} = {}) {
-  const invoker = document.createElement(invokerTag);
-  if (invokerTag === "a" && !("href" in invokerAttrs)) {
-    invoker.setAttribute("href", "#");
-  }
-  invoker.setAttribute("interestfor", targetId);
-  for (const [k, v] of Object.entries(invokerAttrs)) {
-    invoker.setAttribute(k, v);
-  }
-  if (delayStart !== null) {
-    invoker.style.setProperty("--interest-delay-start", delayStart);
-  }
-  if (delayEnd !== null) {
-    invoker.style.setProperty("--interest-delay-end", delayEnd);
-  }
-  invoker.innerHTML = invokerHTML;
-
-  const target = document.createElement("div");
-  target.id = targetId;
-  if (popoverType !== null) {
-    target.setAttribute("popover", popoverType);
-  }
-  target.innerHTML = targetHTML;
-
-  sandbox.append(invoker, target);
-  return { invoker, target };
-}
-
-async function runSuite() {
-  await polyfillLoaded;
-  if (document.readyState !== "complete") {
-    await new Promise((r) => window.addEventListener("load", r, { once: true }));
-  }
-  await nextTick();
-
+async function runTests() {
   // =========================================================================
   section("1. Accessibility: Plain & Rich Hints (Eager Init & Mutations)");
   // =========================================================================
@@ -833,10 +549,303 @@ async function runSuite() {
     await wait(30);
     assert_false(target.matches(":popover-open"), "canceled touch did not open popover");
   });
+}
+</script>
 
-  // =========================================================================
-  // Summary
-  // =========================================================================
+<!-- ===================================================================== -->
+<!--                            END OF TESTS                               -->
+<!-- ===================================================================== -->
+
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 20px;
+    color: #222;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  header h2 {
+    margin: 0;
+  }
+  #summary {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .pass-bg {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+  .fail-bg {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+  .running-bg {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 960px;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    text-align: left;
+  }
+  th {
+    background: #f5f5f5;
+  }
+  td.status {
+    width: 60px;
+    font-weight: 600;
+    text-align: center;
+  }
+  td.pass {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  td.fail {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  tr.section-row td {
+    background-color: #eef2f7;
+    font-weight: 600;
+    padding-top: 10px;
+  }
+  .error-detail {
+    color: #721c24;
+    font-family: monospace;
+    font-size: 12px;
+    margin-top: 4px;
+    white-space: pre-wrap;
+  }
+  #sandbox {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+  }
+</style>
+
+<header>
+  <h2>Interestfor Polyfill Automated Test Suite</h2>
+  <label>
+    Target:
+    <select id="target_select">
+      <option value="src">src/interestfor.js</option>
+      <option value="min">src/interestfor.min.js</option>
+    </select>
+  </label>
+  <button id="rerun" type="button">Re-run</button>
+</header>
+
+<div id="summary" class="running-bg">Running tests...</div>
+<table>
+  <thead>
+    <tr>
+      <th>Status</th>
+      <th>Test</th>
+    </tr>
+  </thead>
+  <tbody id="log"></tbody>
+</table>
+
+<div id="sandbox"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const targetMode = params.get("target") === "min" ? "min" : "src";
+const targetSelect = document.getElementById("target_select");
+targetSelect.value = targetMode;
+targetSelect.addEventListener("change", () => {
+  const url = new URL(location.href);
+  url.searchParams.set("target", targetSelect.value);
+  location.href = url.toString();
+});
+document.getElementById("rerun").addEventListener("click", () => location.reload());
+
+// Force the polyfill to install even in browsers with native support.
+window.interestForUsePolyfillAlways = true;
+const polyfillScript = document.createElement("script");
+polyfillScript.src = targetMode === "min" ? "../src/interestfor.min.js" : "../src/interestfor.js";
+const polyfillLoaded = new Promise((resolve, reject) => {
+  polyfillScript.onload = resolve;
+  polyfillScript.onerror = () => reject(new Error(`Failed to load ${polyfillScript.src}`));
+});
+document.head.appendChild(polyfillScript);
+
+// Minimal test harness
+const logBody = document.getElementById("log");
+const sandbox = document.getElementById("sandbox");
+let totalCount = 0;
+let passCount = 0;
+let failCount = 0;
+
+function section(title) {
+  const tr = document.createElement("tr");
+  tr.className = "section-row";
+  const td = document.createElement("td");
+  td.colSpan = 2;
+  td.textContent = title;
+  tr.appendChild(td);
+  logBody.appendChild(tr);
+}
+
+function recordResult(name, passed, errorMsg) {
+  totalCount++;
+  if (passed) {
+    passCount++;
+  } else {
+    failCount++;
+  }
+  const tr = document.createElement("tr");
+  const statusTd = document.createElement("td");
+  statusTd.className = `status ${passed ? "pass" : "fail"}`;
+  statusTd.textContent = passed ? "PASS" : "FAIL";
+  const nameTd = document.createElement("td");
+  nameTd.textContent = name;
+  if (!passed && errorMsg) {
+    const detail = document.createElement("div");
+    detail.className = "error-detail";
+    detail.textContent = errorMsg;
+    nameTd.appendChild(detail);
+  }
+  tr.append(statusTd, nameTd);
+  logBody.appendChild(tr);
+}
+
+async function test(name, fn) {
+  sandbox.replaceChildren();
+  try {
+    await fn();
+    recordResult(name, true);
+  } catch (err) {
+    console.error(`FAIL: ${name}`, err);
+    recordResult(name, false, err && err.message ? err.message : String(err));
+  } finally {
+    sandbox.replaceChildren();
+  }
+}
+
+function assert_true(cond, msg = "expected true") {
+  if (!cond) {
+    throw new Error(msg);
+  }
+}
+
+function assert_false(cond, msg = "expected false") {
+  if (cond) {
+    throw new Error(msg);
+  }
+}
+
+function assert_equals(actual, expected, msg = "") {
+  if (!Object.is(actual, expected)) {
+    const prefix = msg ? `${msg}: ` : "";
+    throw new Error(`${prefix}expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  }
+}
+
+function assert_array_equals(actual, expected, msg = "") {
+  assert_equals(actual.length, expected.length, `${msg} (length)`);
+  for (let i = 0; i < expected.length; i++) {
+    assert_equals(actual[i], expected[i], `${msg} (index ${i})`);
+  }
+}
+
+function assert_throws_js(ErrorConstructor, fn, msg = "") {
+  let threw = false;
+  try {
+    fn();
+  } catch (e) {
+    threw = true;
+    assert_true(
+      e instanceof ErrorConstructor,
+      `${msg}: expected ${ErrorConstructor.name}, got ${e}`
+    );
+  }
+  assert_true(threw, `${msg}: expected ${ErrorConstructor.name} to be thrown`);
+}
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const nextTick = () => wait(0);
+
+function hover(el) {
+  el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, composed: true }));
+}
+function dehover(el) {
+  el.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, composed: true }));
+}
+function focusIn(el) {
+  el.dispatchEvent(new FocusEvent("focusin", { bubbles: true, composed: true }));
+}
+function focusOut(el) {
+  el.dispatchEvent(new FocusEvent("focusout", { bubbles: true, composed: true }));
+}
+function pressEscape(target = document.body) {
+  return target.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })
+  );
+}
+
+function createPair({
+  invokerTag = "button",
+  invokerAttrs = {},
+  invokerHTML = "Invoker",
+  targetId = "t_" + Math.random().toString(36).slice(2),
+  popoverType = "auto",
+  targetHTML = "Target content",
+  delayStart = "15ms",
+  delayEnd = "15ms",
+} = {}) {
+  const invoker = document.createElement(invokerTag);
+  if (invokerTag === "a" && !("href" in invokerAttrs)) {
+    invoker.setAttribute("href", "#");
+  }
+  invoker.setAttribute("interestfor", targetId);
+  for (const [k, v] of Object.entries(invokerAttrs)) {
+    invoker.setAttribute(k, v);
+  }
+  if (delayStart !== null) {
+    invoker.style.setProperty("--interest-delay-start", delayStart);
+  }
+  if (delayEnd !== null) {
+    invoker.style.setProperty("--interest-delay-end", delayEnd);
+  }
+  invoker.innerHTML = invokerHTML;
+
+  const target = document.createElement("div");
+  target.id = targetId;
+  if (popoverType !== null) {
+    target.setAttribute("popover", popoverType);
+  }
+  target.innerHTML = targetHTML;
+
+  sandbox.append(invoker, target);
+  return { invoker, target };
+}
+
+async function main() {
+  await polyfillLoaded;
+  if (document.readyState !== "complete") {
+    await new Promise((r) => window.addEventListener("load", r, { once: true }));
+  }
+  await nextTick();
+
+  await runTests();
+
   const summary = document.getElementById("summary");
   if (failCount === 0) {
     summary.className = "pass-bg";
@@ -848,5 +857,5 @@ async function runSuite() {
   console.log(summary.textContent);
 }
 
-runSuite();
+main();
 </script>
