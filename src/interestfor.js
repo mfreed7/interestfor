@@ -59,8 +59,7 @@
       capture: true,
     });
   }
-  
-  if(!window.InterestEvent) {
+  if (!window.InterestEvent || window.interestForUsePolyfillAlways) {
     window.InterestEvent = class InterestEvent extends Event {
       #source;
       constructor(type, eventInit = {}) {
@@ -1116,7 +1115,8 @@
     ].forEach((iface) => {
       if (
         iface &&
-        !Object.prototype.hasOwnProperty.call(iface.prototype, "interestForElement")
+        (!Object.prototype.hasOwnProperty.call(iface.prototype, "interestForElement") ||
+          window.interestForUsePolyfillAlways)
       ) {
         Object.defineProperty(iface.prototype, "interestForElement", descriptor);
       }

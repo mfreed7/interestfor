@@ -215,11 +215,9 @@ native feature:
 
 ## Tests
 
-The `test/test.html` file exercises the various parts of this feature and tests
-for correctness. This is a manual test, since hovering, keyboard-focusing, etc.
-cannot be done programmatically. The test is capable of testing either the
-polyfill (optionally minified) or the native feature. You can run tests directly
-from this repo,
+The `test/test.html` file contains an automated test suite that runs on page
+load and tests the polyfill (either `src/interestfor.js` or
+`src/interestfor.min.js`). You can run the tests directly from this repo,
 [here](https://mfreed7.github.io/interestfor/test/test.html).
 
 ## Browser Compatibility
