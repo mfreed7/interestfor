@@ -202,6 +202,15 @@ native feature:
 - The polyfill installs a `MutationObserver` on the document to keep interest
   buttons up to date, and prepends a `<style>` element to `<head>` containing
   the default styles for interest invokers and interest buttons.
+- Accessibility mappings (`aria-labelledby`, `aria-describedby`, `aria-details`,
+  `aria-expanded`, and `role="tooltip"`) are set up on a best-effort basis by
+  inspecting the DOM. Because JavaScript does not have access to the browser's
+  accessibility tree or computed roles/names, the polyfill cannot match the
+  native feature in all cases (for example, when accessible names depend on CSS,
+  shadow DOM boundaries, or targets without an `id`, or when plain vs. rich
+  hint classification depends on computed roles). Native browser support handles
+  these accessibility mappings directly in the accessibility tree without
+  mutating DOM attributes.
 
 
 ## Tests

@@ -561,12 +561,111 @@
     return true;
   }
 
+  // Best-effort approximation of the Accessible Name Computation algorithm.
+  // Because JavaScript cannot query the browser's actual accessibility tree,
+  // this only inspects common DOM attributes (`aria-labelledby`, `aria-label`,
+  // `alt`, `title`), `<label>` elements, and subtree text nodes. It will miss
+  // names or visibility derived from CSS (e.g. `display: none` or `::before`
+  // `content`), `ElementInternals`, `ariaLabelledByElements`, or other
+  // browser-internal accessibility heuristics.
+  function normalizeText(str) {
+    return str ? str.replace(/\s+/g, " ").trim() : "";
+  }
+
+  function getSubtreeText(node, isRoot = false) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.data;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return "";
+    }
+    if (
+      !isRoot &&
+      (node.hasAttribute("hidden") ||
+        node.getAttribute("aria-hidden") === "true" ||
+        node.localName === "script" ||
+        node.localName === "style")
+    ) {
+      return "";
+    }
+    const ariaLabel = node.getAttribute("aria-label");
+    if (ariaLabel) {
+      return ariaLabel;
+    }
+    if (node.localName === "img" || node.localName === "area") {
+      return node.getAttribute("alt") || "";
+    }
+    let text = "";
+    for (const child of node.childNodes) {
+      text += getSubtreeText(child);
+    }
+    return text;
+  }
+
+  function getAccessibleName(el) {
+    const labelledBy = el.getAttribute("aria-labelledby");
+    if (labelledBy) {
+      const root = getRootNode(el);
+      if (typeof root.getElementById === "function") {
+        const parts = [];
+        for (const id of labelledBy.trim().split(/\s+/)) {
+          const ref = id ? root.getElementById(id) : null;
+          if (ref) {
+            parts.push(normalizeText(getSubtreeText(ref, true)));
+          }
+        }
+        const text = normalizeText(parts.join(" "));
+        if (text) {
+          return text;
+        }
+      }
+    }
+    const ariaLabel = normalizeText(el.getAttribute("aria-label"));
+    if (ariaLabel) {
+      return ariaLabel;
+    }
+    if (el.labels?.length) {
+      const labelText = normalizeText(
+        [...el.labels].map((l) => getSubtreeText(l, true)).join(" ")
+      );
+      if (labelText) {
+        return labelText;
+      }
+    }
+    const subtreeText = normalizeText(getSubtreeText(el, true));
+    if (subtreeText) {
+      return subtreeText;
+    }
+    return normalizeText(el.getAttribute("title"));
+  }
+
   function setupAccessibility(invoker, target) {
+    if (!target.id) {
+      return;
+    }
     if (isPlainHint(target)) {
-      invoker.setAttribute("aria-describedby", target.id);
+      const labelledBy = invoker.getAttribute("aria-labelledby") || "";
+      if (labelledBy.trim().split(/\s+/).includes(target.id)) {
+        return;
+      }
+      const name = getAccessibleName(invoker);
+      const hintText = normalizeText(getSubtreeText(target, true));
+      if (!name) {
+        if (hintText) {
+          invoker.setAttribute("aria-labelledby", target.id);
+        }
+      } else if (
+        hintText &&
+        hintText !== name &&
+        !invoker.hasAttribute("aria-describedby")
+      ) {
+        invoker.setAttribute("aria-describedby", target.id);
+      }
     } else {
       // Rich hint
-      invoker.setAttribute("aria-details", target.id);
+      if (!invoker.hasAttribute("aria-details")) {
+        invoker.setAttribute("aria-details", target.id);
+      }
       invoker.setAttribute("aria-expanded", "false");
       if (!target.hasAttribute("role")) {
         target.setAttribute("role", "tooltip");
@@ -575,23 +674,26 @@
   }
 
   function initializeDataField(el) {
-    if (el[dataField]) return;
-    el[dataField] = {
-      state: InterestState.NoInterest,
-      target: null,
-      gainedTimer: null,
-      lostTimer: null,
-      longPressTimer: null,
-      suppressNextFocusInterest: false,
-      clearGainedTask() {
-        clearTimeout(this.gainedTimer);
-      },
-      clearLostTask() {
-        clearTimeout(this.lostTimer);
-      },
-    };
+    if (!el[dataField]) {
+      el[dataField] = {
+        state: InterestState.NoInterest,
+        target: null,
+        a11yTarget: null,
+        gainedTimer: null,
+        lostTimer: null,
+        longPressTimer: null,
+        suppressNextFocusInterest: false,
+        clearGainedTask() {
+          clearTimeout(this.gainedTimer);
+        },
+        clearLostTask() {
+          clearTimeout(this.lostTimer);
+        },
+      };
+    }
     const target = GetInterestForTarget(el);
-    if (target) {
+    if (target && el[dataField].a11yTarget !== target) {
+      el[dataField].a11yTarget = target;
       setupAccessibility(el, target);
     }
   }
@@ -764,20 +866,24 @@
     const updates = [];
     for (const invoker of invokers) {
       let content = null;
-      if (invoker.isConnected && invoker.hasAttribute(attributeName)) {
+      const target = GetInterestForTarget(invoker);
+      if (target) {
+        invokersMissingTarget.delete(invoker);
         if (wantsInterestButton(invoker)) {
-          invokersMissingTarget.delete(invoker);
           content = getInterestButtonContent(invoker);
-        } else {
-          // The target might be added (or become valid) later.
-          invokersMissingTarget.add(invoker);
         }
+      } else if (invoker.isConnected && invoker.hasAttribute(attributeName)) {
+        // The target might be added (or become valid) later.
+        invokersMissingTarget.add(invoker);
       } else {
         invokersMissingTarget.delete(invoker);
       }
-      updates.push([invoker, content]);
+      updates.push([invoker, target, content]);
     }
-    for (const [invoker, content] of updates) {
+    for (const [invoker, target, content] of updates) {
+      if (target) {
+        initializeDataField(invoker);
+      }
       setInterestButton(invoker, content);
     }
   }
