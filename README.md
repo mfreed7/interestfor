@@ -1,11 +1,15 @@
-# `interestfor` Polyfill
+# The Interest Invokers Polyfill
 
-A polyfill for the `interestfor` attribute. This is a new API for "interest
-interactions" that is in the process of being implemented in browsers. It [shipped](https://chromestatus.com/feature/4530756656562176)
-in Chromium browsers (e.g. Chrome, Edge) in version 142 (October 2025).
-See the MDN documentation for more details:
-
-https://developer.mozilla.org/en-US/docs/Web/API/Popover_API/Using_interest_invokers
+A polyfill for the [Interest Invokers
+API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API/Using_interest_invokers),
+including the `interestfor` attribute, the `:interest-source` and
+`:interest-target` pseudo classes, the `::interest-button` pseudo element, and
+the `interest-delay` CSS properties. All of the API except the
+`::interest-button` pseudo element have been
+[shipped](https://chromestatus.com/feature/4530756656562176) in Chromium
+browsers (e.g. Chrome, Edge), since version 142 (October 2025). The
+`::interest-button` pseudo element is planned to be shipped soon in Chromium
+also.
 
 ## Usage
 To use this polyfill, simply load it:
@@ -16,6 +20,12 @@ To use this polyfill, simply load it:
 <a interestfor=foo href=bar>Link</a>
 <div popover id=foo>Popover</div>
 ```
+
+## Browser Compatibility
+
+This polyfill uses all standard APIs, and is therefore compatible with all
+modern browsers, including Safari and Firefox. It supports mobile touchscreen
+operation also, as much as [is possible](#touchscreen-support).
 
 ## Behavior Summary
 
@@ -46,14 +56,16 @@ A few more details:
 - The `interestForElement` property is available on `HTMLButtonElement`,
   `HTMLAnchorElement`, `HTMLAreaElement`, and `SVGAElement`. It reflects the
   `interestfor` attribute as an element reference.
+- The `:interest-source` and `:interest-target` pseudo classes match the
+  interest invoker and its target element while interest is shown.
+- The `interest-delay`, `interest-delay-start`, and `interest-delay-end` CSS
+  properties control the delays before showing and losing interest.
 - The optional `::interest-button` pseudo element provides a button that shows
   interest immediately when clicked or tapped. See below.
 
 Again, this is a quick summary. For the complete details, please [read the
-OpenUI explainer](https://open-ui.org/components/interest-invokers.explainer),
-the [HTML spec PR](https://github.com/whatwg/html/pull/11006), and the CSSWG
-specs for [the pseudo classes](https://drafts.csswg.org/selectors-5/#interest-pseudos)
-and [CSS properties](https://drafts.csswg.org/css-ui-4/#interest).
+OpenUI explainer](https://open-ui.org/components/interest-invokers.explainer) or
+the [specifications](#standards).
 
 ## The `::interest-button` pseudo element
 
@@ -227,10 +239,20 @@ load and tests the polyfill (either `src/interestfor.js` or
 `src/interestfor.min.js`). You can run the tests directly from this repo,
 [here](https://mfreed7.github.io/interestfor/test/test.html).
 
-## Browser Compatibility
+## Standards
 
-This polyfill uses all standard APIs, and is therefore compatible with all
-modern browsers, including Safari and Firefox.
+This is a recently-developed API, and the specs are in various states of
+standardization:
+- The `::interest-button` CSS pseudo-element is defined here:
+  https://drafts.csswg.org/css-pseudo-4/#selectordef-interest-button
+- The `:interest-source` and `:interest-target` CSS pseudo-classes are defined
+  here:
+  https://drafts.csswg.org/selectors-5/#interest-pseudos
+- The `interest-delay-*` CSS properties are defined here:
+  https://drafts.csswg.org/css-ui-4/#interest
+- The HTML spec PR is located here:
+  https://github.com/whatwg/html/pull/11006
+  (Add a Thumbs Up 👍 to support landing it!)
 
 ## Improvements / Bugs
 
