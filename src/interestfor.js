@@ -984,11 +984,19 @@
         HandleInterestHoverOrFocus(el, source);
       }
     };
+    const clearTouch = (e) => {
+      if (e.pointerType !== "touch") {
+        touchInProgress = false;
+      }
+    };
+    document.body.addEventListener("pointerover", clearTouch);
+    document.body.addEventListener("pointerdown", clearTouch);
     document.body.addEventListener("mouseover", (e) => handler(e, Source.Hover));
     document.body.addEventListener("mouseout", (e) => handler(e, Source.DeHover));
     document.body.addEventListener("focusin", (e) => handler(e, Source.Focus));
     document.body.addEventListener("focusout", (e) => handler(e, Source.Blur));
     document.body.addEventListener("keydown", (e) => {
+      touchInProgress = false;
       if (e.key === "Escape" && !e.defaultPrevented) {
         // Lose interest in all invokers, most recent first. These
         // `loseinterest` events are not cancelable.
@@ -1030,10 +1038,7 @@
         invoker[dataField].longPressTimer = null;
       }
     };
-    document.body.addEventListener("touchend", (e) => {
-      cancelLongPress(e);
-      touchInProgress = false;
-    });
+    document.body.addEventListener("touchend", cancelLongPress);
     document.body.addEventListener("touchmove", cancelLongPress);
   }
 

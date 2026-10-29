@@ -549,6 +549,29 @@ async function runTests() {
     await wait(30);
     assert_false(target.matches(":popover-open"), "canceled touch did not open popover");
   });
+
+  await test("Emulated mouseover and focusin after touchend do not show interest until non-touch input occurs", async () => {
+    const { invoker, target } = createPair({ delayStart: "10ms", delayEnd: "10ms" });
+    invoker.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "touch" }));
+    invoker.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
+    invoker.dispatchEvent(new Event("touchstart", { bubbles: true }));
+    await wait(10);
+    invoker.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch" }));
+    invoker.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "touch" }));
+    invoker.dispatchEvent(new Event("touchend", { bubbles: true }));
+    // Emulated compatibility mouse and focus events arrive after touchend:
+    await wait(5);
+    hover(invoker);
+    focusIn(invoker);
+    await wait(25);
+    assert_false(target.matches(":popover-open"), "post-touchend emulated mouseover/focusin ignored");
+
+    // Switching to mouse re-enables hover interest:
+    invoker.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
+    hover(invoker);
+    await wait(25);
+    assert_true(target.matches(":popover-open"), "mouse pointerover re-enables hover interest");
+  });
 }
 </script>
 
