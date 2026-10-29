@@ -1012,6 +1012,18 @@
     });
     // Touch support
     const longPressTime = 500;
+    // WebKit (iOS) long-press workaround:
+    // On Android, holding for ~500ms fires `pointercancel` and `touchcancel`,
+    // so the popover can open immediately when `longPressTimer` fires while the
+    // finger is still down. On iOS WebKit, holding a button with
+    // `user-select: none` does not cancel the touch stream; when the finger is
+    // later lifted, iOS fires `pointerup` (which triggers WebKit's native
+    // popover light-dismiss because the popover was not open at `pointerdown`)
+    // followed by `touchend` and synthesized mouse/`click` events.
+    // On iOS only, record that the 500ms hold succeeded (`longPressActive`),
+    // and on `touchend` (which fires after `pointerup`), call `preventDefault()`
+    // to suppress the synthesized `click` and open the popover then.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     document.body.addEventListener("touchstart", (e) => {
       touchInProgress = true;
       const invoker = e.target.closest("button[interestfor]");
@@ -1022,12 +1034,15 @@
           // Long-press shows interest immediately, and that interest is not
           // lost by de-hovering or blurring the invoker.
           if (invoker[dataField].state === InterestState.NoInterest) {
-            GainOrLoseInterest(
-              invoker,
-              GetInterestForTarget(invoker),
-              InterestState.ExplicitInterest
-            );
-            invoker[dataField].longPressActive = true;
+            if (isIOS) {
+              invoker[dataField].longPressActive = true;
+            } else {
+              GainOrLoseInterest(
+                invoker,
+                GetInterestForTarget(invoker),
+                InterestState.ExplicitInterest
+              );
+            }
           }
           invoker[dataField].longPressTimer = null;
         }, longPressTime);
@@ -1035,31 +1050,29 @@
     });
     const cancelLongPress = (e) => {
       const invoker = e.target.closest("button[interestfor]");
-      if (invoker && invoker[dataField]?.longPressTimer) {
+      if (invoker && invoker[dataField]) {
         clearTimeout(invoker[dataField].longPressTimer);
         invoker[dataField].longPressTimer = null;
+        invoker[dataField].longPressActive = false;
       }
     };
     document.body.addEventListener("touchmove", cancelLongPress);
-
-    // WebKit (iOS Safari) long-press release workaround:
-    // Unlike Android (which fires `pointercancel` and `touchcancel` after a
-    // ~500ms hold), iOS Safari does not cancel the touch stream on a button
-    // with `user-select: none`. When the user lifts their finger after the
-    // 500ms long-press timer has already opened the popover, iOS synthesizes
-    // compatibility `mousedown`, `mouseup`, and `click` events after `touchend`,
-    // which light-dismiss the popover and activate the button. Calling
-    // `e.preventDefault()` on `touchend` suppresses those synthesized events.
     document.body.addEventListener(
       "touchend",
       (e) => {
-        cancelLongPress(e);
         const invoker = e.target.closest("button[interestfor]");
-        const data = invoker?.[dataField];
-        if (data?.longPressActive) {
-          data.longPressActive = false;
+        const longPressActive = invoker?.[dataField]?.longPressActive;
+        cancelLongPress(e);
+        if (longPressActive) {
           if (e.cancelable) {
             e.preventDefault();
+          }
+          if (invoker[dataField].state === InterestState.NoInterest) {
+            GainOrLoseInterest(
+              invoker,
+              GetInterestForTarget(invoker),
+              InterestState.ExplicitInterest
+            );
           }
         }
       },
