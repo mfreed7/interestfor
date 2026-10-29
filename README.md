@@ -211,6 +211,13 @@ native feature:
   hint classification depends on computed roles). Native browser support handles
   these accessibility mappings directly in the accessibility tree without
   mutating DOM attributes.
+- On iOS (detected via user-agent sniffing for `iPad`, `iPhone`, or `iPod`),
+  long-pressing a `<button interestfor>` shows interest when the finger is
+  released (`touchend`) after holding for at least 500ms, rather than while the
+  finger is still held down. Unlike Android (which fires `pointercancel` and
+  `touchcancel` after a ~500ms hold), iOS WebKit does not cancel the touch
+  stream and fires `pointerup` on finger release, which would otherwise trigger
+  native popover light-dismiss on a popover opened after `pointerdown`.
 
 
 ## Tests
