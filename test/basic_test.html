@@ -2,8 +2,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="../src/interestfor.js" async></script>
-
 <div>
   <a interestfor=foo href=bar>Link - hover me</a>
 </div>
@@ -14,6 +12,9 @@
 <div popover id=bar>Button action</div>
 
 <style>
+  body {
+    padding: 20px 0 0 20px;
+  }
   [interestfor] {
     --interest-delay: 600ms 500ms;
     interest-delay: var(--interest-delay);
@@ -30,6 +31,10 @@
     position-area: right center;
     margin-left:30px;
   }
+  #bar {
+    position-area: bottom center;
+    margin: 10px 0 0 0;
+  }
   div { margin: 10px; }
   /* Polyfilled ::interest-button */
   [interestfor] {
@@ -40,3 +45,26 @@
     content: var(--interest-button-content);
   }
 </style>
+
+<div>
+  <label>Mode:
+    <select id="mode">
+      <option value="polyfill">Use polyfill</option>
+      <option value="native">Native</option>
+    </select>
+  </label>
+</div>
+<script>
+  const mode = new URLSearchParams(location.search).get("mode") || "polyfill";
+  const select = document.getElementById("mode");
+  select.value = mode;
+  select.addEventListener("change", () => {
+    location.search = `?mode=${select.value}`;
+  });
+  if (mode === "polyfill") {
+    window.interestForUsePolyfillAlways = true;
+    const s = document.createElement("script");
+    s.src = "../src/interestfor.js";
+    document.head.appendChild(s);
+  }
+</script>
