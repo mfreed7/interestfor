@@ -572,6 +572,52 @@ async function runTests() {
     await wait(25);
     assert_true(target.matches(":popover-open"), "mouse pointerover re-enables hover interest");
   });
+
+  await test("iOS long-press ignores touchmove within 10px slop and cancels beyond 10px", async () => {
+    const origUA = Object.getOwnPropertyDescriptor(Navigator.prototype, "userAgent");
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15",
+      configurable: true,
+    });
+    const dispatchTouch = (el, type, x, y) => {
+      const ev = new Event(type, { bubbles: true, cancelable: true });
+      ev.touches = type === "touchend" ? [] : [{ clientX: x, clientY: y }];
+      el.dispatchEvent(ev);
+      return ev;
+    };
+    try {
+      const { invoker, target } = createPair();
+      // 1. Jitter within 10px (e.g. 6, 8 -> distance 10) does not cancel long press:
+      dispatchTouch(invoker, "touchstart", 100, 100);
+      dispatchTouch(invoker, "touchmove", 106, 108);
+      await wait(520);
+      assert_false(target.matches(":popover-open"), "on iOS, popover waits for touchend");
+      // Jitter after the 500ms timer has fired (still within 10px) also does not cancel:
+      dispatchTouch(invoker, "touchmove", 95, 100);
+      const endEv = dispatchTouch(invoker, "touchend", 95, 100);
+      assert_true(endEv.defaultPrevented, "touchend prevented default to suppress click");
+      assert_true(target.matches(":popover-open"), "long press with <=10px jitter opened popover on touchend");
+
+      pressEscape();
+      assert_false(target.matches(":popover-open"), "closed via Escape");
+
+      // 2. Movement >10px (e.g. 7, 8 -> distance ~10.63) cancels long press:
+      dispatchTouch(invoker, "touchstart", 100, 100);
+      dispatchTouch(invoker, "touchmove", 107, 108);
+      await wait(520);
+      const endEv2 = dispatchTouch(invoker, "touchend", 107, 108);
+      assert_false(endEv2.defaultPrevented, "canceled long press does not preventDefault on touchend");
+      assert_false(target.matches(":popover-open"), "long press with >10px movement did not open popover");
+    } finally {
+      if (origUA) {
+        Object.defineProperty(navigator, "userAgent", origUA);
+      } else {
+        delete navigator.userAgent;
+      }
+      // Reset touchInProgress for any subsequent tests
+      document.body.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
+    }
+  });
 }
 </script>
 

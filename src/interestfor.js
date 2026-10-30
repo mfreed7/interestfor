@@ -1010,31 +1010,46 @@
         });
       }
     });
+
+    // WebKit (iOS) long-press workarounds:
+    // 1. On Android, holding for ~500ms fires `pointercancel` and `touchcancel`,
+    //    so the popover can open immediately when `longPressTimer` fires while
+    //    the finger is still down. On iOS WebKit, holding a button with
+    //    `user-select: none` does not cancel the touch stream; when the finger
+    //    is later lifted, iOS fires `pointerup` (which triggers WebKit's native
+    //    popover light-dismiss because the popover was not open at
+    //    `pointerdown`) followed by `touchend` and synthesized mouse/`click`
+    //    events. On iOS only, record that the 500ms hold succeeded
+    //    (`longPressActive`), and on `touchend` (which fires after `pointerup`),
+    //    call `preventDefault()` to suppress the synthesized `click` and open
+    //    the popover then.
+    // 2. Unlike Android (which applies a native touch slop before firing
+    //    `touchmove`), iOS WebKit dispatches `touchmove` on tiny finger jitter
+    //    during a stationary hold. On iOS only, ignore `touchmove` events within
+    //    10px of `touchstart` (matching UIKit's default `allowableMovement` on
+    //    `UILongPressGestureRecognizer`).
+    const longPressMoveSlop = 10;
+    const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    
     // Touch support
     const longPressTime = 500;
-    // WebKit (iOS) long-press workaround:
-    // On Android, holding for ~500ms fires `pointercancel` and `touchcancel`,
-    // so the popover can open immediately when `longPressTimer` fires while the
-    // finger is still down. On iOS WebKit, holding a button with
-    // `user-select: none` does not cancel the touch stream; when the finger is
-    // later lifted, iOS fires `pointerup` (which triggers WebKit's native
-    // popover light-dismiss because the popover was not open at `pointerdown`)
-    // followed by `touchend` and synthesized mouse/`click` events.
-    // On iOS only, record that the 500ms hold succeeded (`longPressActive`),
-    // and on `touchend` (which fires after `pointerup`), call `preventDefault()`
-    // to suppress the synthesized `click` and open the popover then.
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     document.body.addEventListener("touchstart", (e) => {
       touchInProgress = true;
       const invoker = e.target.closest("button[interestfor]");
       if (invoker) {
         initializeDataField(invoker);
+        const ios = isIOS();
+        if (ios && e.touches?.length === 1) {
+          invoker[dataField].touchStartX = e.touches[0].clientX;
+          invoker[dataField].touchStartY = e.touches[0].clientY;
+        }
         invoker[dataField].longPressActive = false;
         invoker[dataField].longPressTimer = setTimeout(() => {
           // Long-press shows interest immediately, and that interest is not
           // lost by de-hovering or blurring the invoker.
           if (invoker[dataField].state === InterestState.NoInterest) {
-            if (isIOS) {
+            if (ios) {
               invoker[dataField].longPressActive = true;
             } else {
               GainOrLoseInterest(
@@ -1051,6 +1066,13 @@
     const cancelLongPress = (e) => {
       const invoker = e.target.closest("button[interestfor]");
       if (invoker && invoker[dataField]) {
+        if (isIOS() && e.type === "touchmove" && e.touches?.length === 1) {
+          const dx = e.touches[0].clientX - invoker[dataField].touchStartX;
+          const dy = e.touches[0].clientY - invoker[dataField].touchStartY;
+          if (Math.hypot(dx, dy) <= longPressMoveSlop) {
+            return;
+          }
+        }
         clearTimeout(invoker[dataField].longPressTimer);
         invoker[dataField].longPressTimer = null;
         invoker[dataField].longPressActive = false;
