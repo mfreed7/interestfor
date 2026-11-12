@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Interest Invokers, Command Invokers &amp; Hint Popovers Test Page</title>
+  <style>
+    body { font-family: sans-serif; line-height: 1.6; margin: 16px; }
+    section { border-bottom: 1px solid #ccc; padding: 12px 0; }
+    h2 { margin: 0 0 8px; font-size: 1rem; }
+    /* Minimal implicit-anchor offset so concurrent popovers do not completely occlude triggers */
+    [popover] { inset: auto; margin: 4px; position-area: block-end; }
+    [popover="hint"] { position-area: inline-end; }
+  </style>
+  <script src="../src/interestfor.js"></script>
+</head>
+<body>
+
+  <h1>Invoker &amp; Popover Permutations Test Suite</h1>
+
+  <!-- ===================================================================== -->
+  <!-- 1. Interest invokers pointing to plain hints                          -->
+  <!-- ===================================================================== -->
+  <section id="test-1">
+    <h2>1. Plain Hints (<code>interestfor</code> + non-interactive content)</h2>
+
+    <button id="btn-plain-text" interestfor="hint-plain-text">
+      1a. Plain text hint
+    </button>
+    <div id="hint-plain-text" popover="hint">
+      Basic plain text inside a hint popover.
+    </div>
+
+    <button id="btn-plain-p" interestfor="hint-plain-p">
+      1b. Paragraph hint (&lt;p&gt; / role="paragraph")
+    </button>
+    <div id="hint-plain-p" popover="hint">
+      <p role="paragraph">Paragraph node with explicit role="paragraph" inside a plain hint.</p>
+      <p>Second standard &lt;p&gt; element with implicit paragraph semantics.</p>
+    </div>
+
+    <button id="btn-plain-tooltip" interestfor="hint-plain-tooltip">
+      1c. Explicit role="tooltip" plain hint
+    </button>
+    <div id="hint-plain-tooltip" popover="hint" role="tooltip">
+      Plain hint with explicit role="tooltip".
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 2. Interest invokers pointing to rich hints                           -->
+  <!-- ===================================================================== -->
+  <section id="test-2">
+    <h2>2. Rich Hints (<code>interestfor</code> + interactive/structured popovers)</h2>
+
+    <!-- Adjacent in DOM: tests whether aria-details is omitted when popover is next sibling -->
+    <button id="btn-rich-adjacent" interestfor="hint-rich-adjacent">
+      2a. Rich hint (DOM-adjacent)
+    </button>
+    <div id="hint-rich-adjacent" popover="hint">
+      <h3>Rich Hovercard (Adjacent)</h3>
+      <p>Contains interactive elements to trigger rich-hint semantics.</p>
+      <a href="#test-2">Explore details</a>
+      <button type="button">Action inside rich hint</button>
+    </div>
+
+    <!-- Non-adjacent in DOM: tests automatic aria-details + aria-expanded wiring -->
+    <button id="btn-rich-separated" interestfor="hint-rich-separated">
+      2b. Rich hint (Non-adjacent in DOM)
+    </button>
+
+    <span>Spacer sibling between trigger and target popover.</span>
+
+    <div id="hint-rich-separated" popover="hint">
+      <h3>Rich Hovercard (Separated in DOM)</h3>
+      <p>Tests browser-managed <code>aria-expanded</code> and <code>aria-details</code> relationships.</p>
+      <input type="text" placeholder="Focusable input in rich hint">
+      <button type="button">Save</button>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 3. Dual-purpose button invokers                                       -->
+  <!-- ===================================================================== -->
+  <section id="test-3">
+    <h2>3. Dual-Purpose Button Invokers (<code>interestfor</code> + <code>commandfor</code> / <code>popovertarget</code>)</h2>
+
+    <!-- 3a. interestfor (hint) + commandfor (secondary auto popover) -->
+    <button id="btn-dual-command-popover"
+            interestfor="hint-dual-1"
+            commandfor="popover-secondary-action"
+            command="toggle-popover">
+      3a. Hover for hint / Click to toggle secondary popover (commandfor)
+    </button>
+    <div id="hint-dual-1" popover="hint" role="tooltip">
+      Preview tooltip via interestfor.
+    </div>
+    <div id="popover-secondary-action" popover="auto">
+      <p>Secondary action popover opened via <code>commandfor</code> + <code>command="toggle-popover"</code>.</p>
+      <button type="button">Inner control</button>
+    </div>
+
+    <!-- 3b. interestfor (hint) + commandfor (modal dialog) -->
+    <button id="btn-dual-command-dialog"
+            interestfor="hint-dual-2"
+            commandfor="dialog-action"
+            command="show-modal">
+      3b. Hover for hint / Click to open modal dialog (commandfor)
+    </button>
+    <div id="hint-dual-2" popover="hint" role="tooltip">
+      Opens modal dialog when activated.
+    </div>
+    <dialog id="dialog-action">
+      <p>Dialog opened via <code>commandfor="dialog-action" command="show-modal"</code>.</p>
+      <button commandfor="dialog-action" command="close">Close Dialog</button>
+    </dialog>
+
+    <!-- 3c. interestfor + commandfor pointing to the SAME popover (hover to preview, click to pin) -->
+    <button id="btn-dual-same-target"
+            interestfor="hint-shared-target"
+            commandfor="hint-shared-target"
+            command="show-popover">
+      3c. Same target: Hover to preview / Click to keep open
+    </button>
+    <div id="hint-shared-target" popover="hint">
+      <p>Shared rich hint target for both <code>interestfor</code> and <code>commandfor</code>.</p>
+      <button type="button">Interactive child</button>
+    </div>
+
+    <!-- 3d. interestfor + legacy popovertarget -->
+    <button id="btn-dual-popovertarget"
+            interestfor="hint-dual-3"
+            popovertarget="popover-legacy-target"
+            popovertargetaction="toggle">
+      3d. Hover for hint / Click via popovertarget
+    </button>
+    <div id="hint-dual-3" popover="hint" role="tooltip">
+      Hint on a button using popovertarget.
+    </div>
+    <div id="popover-legacy-target" popover="auto">
+      <p>Secondary popover controlled by <code>popovertarget</code>.</p>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 4. Nested interest invokers inside their own popover                  -->
+  <!-- ===================================================================== -->
+  <section id="test-4">
+    <h2>4. Nested Interest Invokers Inside Their Own Popover</h2>
+
+    <button id="btn-open-outer-rich" interestfor="popover-self-host" commandfor="popover-self-host" command="toggle-popover">
+      4a. Open / Interest Outer Rich Hint (#popover-self-host)
+    </button>
+
+    <div id="popover-self-host" popover="hint">
+      <h3>Outer Rich Hint (#popover-self-host)</h3>
+      <p>Contains an invoker pointing back to this enclosing popover, and another pointing to a second rich hint:</p>
+
+      <!-- Invoker placed INSIDE the very popover it controls -->
+      <button id="btn-self-nested" interestfor="popover-self-host">
+        4b. Self-referencing invoker inside #popover-self-host
+      </button>
+
+      <!-- Invoker inside #popover-self-host interacting with another rich hint -->
+      <button id="btn-nested-to-second-rich" interestfor="popover-nested-rich-2">
+        4c. Invoker inside #popover-self-host -&gt; #popover-nested-rich-2
+      </button>
+    </div>
+
+    <div id="popover-nested-rich-2" popover="hint">
+      <h3>Second Rich Hint (#popover-nested-rich-2)</h3>
+      <p>Triggered from inside #popover-self-host.</p>
+      <!-- Also includes a self-referencing invoker inside itself -->
+      <button id="btn-self-nested-2" interestfor="popover-nested-rich-2">
+        4d. Self-referencing invoker inside #popover-nested-rich-2
+      </button>
+      <a href="#test-4">Nested interactive link</a>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 5. Hyperlink interest invokers (<a href> + interestfor)               -->
+  <!-- ===================================================================== -->
+  <section id="test-5">
+    <h2>5. Hyperlink Interest Invokers (<code>&lt;a href&gt;</code> + <code>interestfor</code>)</h2>
+
+    <p>
+      Hover or focus the profile link for
+      <a id="link-rich-hovercard" href="#profile-destination" interestfor="hovercard-profile">@mfreed7</a>
+      or the documentation link for
+      <a id="link-plain-hint" href="#docs-destination" interestfor="hovercard-plain">Popover API Spec</a>.
+    </p>
+
+    <div id="hovercard-profile" popover="hint">
+      <h3>Mason (@mfreed7)</h3>
+      <p>Browser Engineer working on Blink / Open UI.</p>
+      <a href="#follow">Follow</a>
+      <button type="button">Message</button>
+    </div>
+
+    <div id="hovercard-plain" popover="hint" role="tooltip">
+      Plain tooltip preview for a standard navigable hyperlink.
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 6. Author-defined ARIA states combined with interest invokers         -->
+  <!-- ===================================================================== -->
+  <section id="test-6">
+    <h2>6. Author-Defined ARIA States + <code>interestfor</code></h2>
+
+    <p id="author-desc">Author-supplied description text via aria-describedby.</p>
+    <div id="author-details">Author-supplied extra details node via aria-details.</div>
+
+    <!-- Explicit aria-expanded="false" and aria-describedby on a button pointing to a rich hint -->
+    <button id="btn-author-aria-false"
+            interestfor="hint-author-rich"
+            aria-expanded="false"
+            aria-describedby="author-desc">
+      6a. Button with explicit aria-expanded="false" + aria-describedby
+    </button>
+
+    <!-- Explicit aria-expanded="true" and aria-details on a button pointing to a rich hint -->
+    <button id="btn-author-aria-true"
+            interestfor="hint-author-rich"
+            aria-expanded="true"
+            aria-details="author-details">
+      6b. Button with explicit aria-expanded="true" + aria-details
+    </button>
+
+    <!-- Explicit aria-expanded and aria-describedby on a hyperlink invoker -->
+    <a id="link-author-aria"
+       href="#section-6"
+       interestfor="hint-author-plain"
+       aria-expanded="false"
+       aria-describedby="author-desc">
+      6c. Link with explicit aria-expanded="false" + aria-describedby
+    </a>
+
+    <div id="hint-author-rich" popover="hint">
+      <h3>Rich Hint Target for Author-Defined ARIA Triggers</h3>
+      <button type="button">Interactive Button</button>
+    </div>
+
+    <div id="hint-author-plain" popover="hint" role="tooltip">
+      Plain hint target for author-ARIA link trigger.
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 7. Interest invokers combined with has-interest-for state             -->
+  <!-- ===================================================================== -->
+  <section id="test-7">
+    <h2>7. Interest Invokers + <code>has-interest-for</code> &amp; <code>aria-expanded</code></h2>
+
+    <!-- Boolean has-interest-for alongside primary disclosure aria-expanded="false" -->
+    <button id="btn-has-interest-collapsed"
+            interestfor="hint-has-interest-rich"
+            commandfor="panel-primary-disclosure"
+            command="toggle-popover"
+            has-interest-for
+            aria-expanded="false">
+      7a. Control with has-interest-for + aria-expanded="false" (Primary Collapsed)
+    </button>
+
+    <!-- Explicit ID/value has-interest-for alongside primary disclosure aria-expanded="true" -->
+    <button id="btn-has-interest-expanded"
+            interestfor="hint-has-interest-plain"
+            has-interest-for="hint-has-interest-plain"
+            aria-expanded="true">
+      7b. Control with has-interest-for="hint-has-interest-plain" + aria-expanded="true" (Primary Expanded)
+    </button>
+
+    <!-- Hyperlink with has-interest-for + aria-expanded -->
+    <a id="link-has-interest"
+       href="#section-7"
+       interestfor="hint-has-interest-rich"
+       has-interest-for
+       aria-expanded="false">
+      7c. Link with has-interest-for + aria-expanded="false"
+    </a>
+
+    <div id="hint-has-interest-rich" popover="hint">
+      <h3>Rich Hint on a <code>has-interest-for</code> Control</h3>
+      <p>Tests disambiguation between primary disclosure state and interest popover state.</p>
+      <button type="button">Hint Action</button>
+    </div>
+
+    <div id="hint-has-interest-plain" popover="hint" role="tooltip">
+      Plain hint on a control with has-interest-for and aria-expanded="true".
+    </div>
+
+    <div id="panel-primary-disclosure" popover="auto">
+      <p>Primary disclosure popover controlled by 7a.</p>
+    </div>
+  </section>
+
+</body>
+</html>
