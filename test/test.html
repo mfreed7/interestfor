@@ -192,6 +192,191 @@ async function runTests() {
     assert_equals(invoker.getAttribute("aria-labelledby"), "delayed_target");
   });
 
+  await test("Plain vs. rich classification ignores popover type, and allows role=tooltip/paragraph", async () => {
+    const { invoker: autoInv, target: autoTip } = createPair({
+      invokerHTML: "Help",
+      popoverType: "auto",
+      targetHTML: "Plain text in an auto popover",
+    });
+    const { invoker: manualInv, target: manualTip } = createPair({
+      invokerHTML: "Help",
+      popoverType: "manual",
+      targetHTML: "Plain text in a manual popover",
+    });
+    const { invoker: roleInv, target: roleTip } = createPair({
+      invokerHTML: "Help",
+      popoverType: "hint",
+      targetHTML: '<div role="tooltip"><span role="paragraph">Some text</span></div>',
+    });
+    const { invoker: richAutoInv, target: richAutoTip } = createPair({
+      invokerHTML: "Help",
+      popoverType: "hint",
+      targetHTML: "<ul><li>Rich</li></ul>",
+    });
+    await nextTick();
+    for (const [inv, tip, label] of [
+      [autoInv, autoTip, "popover=auto"],
+      [manualInv, manualTip, "popover=manual"],
+      [roleInv, roleTip, "role=tooltip/paragraph"],
+    ]) {
+      assert_equals(inv.getAttribute("aria-describedby"), tip.id, `${label} -> aria-describedby`);
+      assert_equals(inv.getAttribute("aria-details"), null, `${label} -> no aria-details`);
+      assert_equals(inv.getAttribute("aria-expanded"), null, `${label} -> no aria-expanded`);
+    }
+    assert_equals(richAutoInv.getAttribute("aria-details"), richAutoTip.id, "rich hint popover -> aria-details");
+    assert_equals(richAutoInv.getAttribute("aria-expanded"), "false", "rich hint popover -> aria-expanded");
+  });
+
+  await test("Plain-hint toggletips (popovertarget, commandfor, author aria-expanded) don't get aria-describedby", async () => {
+    const targetId1 = "toggletip_1";
+    const { invoker: ptInv } = createPair({
+      targetId: targetId1,
+      invokerAttrs: { "aria-label": "More info", popovertarget: targetId1, popovertargetaction: "show" },
+      invokerHTML: "?",
+      targetHTML: "Some helpful text",
+    });
+    const targetId2 = "toggletip_2";
+    const { invoker: cfInv } = createPair({
+      targetId: targetId2,
+      invokerAttrs: { "aria-label": "More info", commandfor: targetId2, command: "show-popover" },
+      invokerHTML: "?",
+      targetHTML: "Some helpful text",
+    });
+    const { invoker: expInv } = createPair({
+      invokerAttrs: { "aria-label": "More info", "aria-expanded": "false" },
+      invokerHTML: "?",
+      targetHTML: "Some helpful text",
+    });
+    // Control: popovertarget pointing elsewhere still gets aria-describedby.
+    const other = document.createElement("div");
+    other.id = "toggletip_other";
+    other.setAttribute("popover", "auto");
+    sandbox.appendChild(other);
+    const { invoker: ctlInv, target: ctlTip } = createPair({
+      invokerAttrs: { "aria-label": "More info", popovertarget: other.id },
+      invokerHTML: "?",
+      targetHTML: "Some helpful text",
+    });
+    await nextTick();
+    assert_equals(ptInv.getAttribute("aria-describedby"), null, "popovertarget");
+    assert_equals(cfInv.getAttribute("aria-describedby"), null, "commandfor");
+    assert_equals(expInv.getAttribute("aria-describedby"), null, "author aria-expanded");
+    assert_equals(expInv.getAttribute("aria-expanded"), "false", "author aria-expanded unchanged");
+    assert_equals(ctlInv.getAttribute("aria-describedby"), ctlTip.id, "popovertarget to another element");
+  });
+
+  await test("Rich hint: author aria-expanded is preserved through interest changes", async () => {
+    const { invoker, target } = createPair({
+      invokerAttrs: { "aria-expanded": "true" },
+      targetHTML: '<a href="#">Rich</a>',
+    });
+    await nextTick();
+    assert_equals(invoker.getAttribute("aria-details"), target.id, "aria-details still added");
+    assert_equals(invoker.getAttribute("aria-expanded"), "true", "after init");
+    hover(invoker);
+    await wait(30);
+    assert_true(target.matches(":popover-open"), "popover opened");
+    dehover(invoker);
+    await wait(30);
+    assert_false(target.matches(":popover-open"), "popover closed");
+    assert_equals(invoker.getAttribute("aria-expanded"), "true", "after losing interest");
+  });
+
+  await test("Rich hint: author aria-describedby/aria-labelledby referencing target suppresses aria-details and aria-expanded", async () => {
+    const id1 = "rich_described";
+    const { invoker: descInv, target: descTip } = createPair({
+      targetId: id1,
+      invokerAttrs: { "aria-describedby": `other ${id1}` },
+      targetHTML: '<a href="#">Rich</a>',
+    });
+    const id2 = "rich_labelled";
+    const { invoker: lblInv } = createPair({
+      targetId: id2,
+      invokerAttrs: { "aria-labelledby": id2 },
+      targetHTML: '<a href="#">Rich</a>',
+    });
+    await nextTick();
+    for (const [inv, label] of [[descInv, "describedby"], [lblInv, "labelledby"]]) {
+      assert_equals(inv.getAttribute("aria-details"), null, `${label} -> no aria-details`);
+      assert_equals(inv.getAttribute("aria-expanded"), null, `${label} -> no aria-expanded`);
+    }
+    hover(descInv);
+    await wait(30);
+    assert_true(descTip.matches(":popover-open"), "popover opened");
+    assert_equals(descInv.getAttribute("aria-expanded"), null, "not set on interest");
+  });
+
+  await test("Rich hint on <a href>: aria-expanded only if the hint contains focusable content", async () => {
+    const { invoker: plainLink, target: plainLinkTip } = createPair({
+      invokerTag: "a",
+      invokerHTML: "@user",
+      targetHTML: "<h3>User</h3><p>Bio</p>",
+    });
+    const { invoker: focusLink } = createPair({
+      invokerTag: "a",
+      invokerHTML: "@user",
+      targetHTML: '<h3>User</h3><button>Follow</button>',
+    });
+    await nextTick();
+    assert_equals(plainLink.getAttribute("aria-details"), plainLinkTip.id, "aria-details still set");
+    assert_equals(plainLink.getAttribute("aria-expanded"), null, "non-focusable rich hint -> no aria-expanded");
+    hover(plainLink);
+    await wait(30);
+    assert_true(plainLinkTip.matches(":popover-open"), "popover opened");
+    assert_equals(plainLink.getAttribute("aria-expanded"), null, "not set on interest");
+    assert_equals(focusLink.getAttribute("aria-expanded"), "false", "focusable rich hint -> aria-expanded");
+  });
+
+  await test("Rich hint: aria-expanded tracks the popover state, even when opened via popovertarget", async () => {
+    const targetId = "rich_pt";
+    const { invoker, target } = createPair({
+      targetId,
+      invokerAttrs: { popovertarget: targetId },
+      targetHTML: '<a href="#">Rich</a>',
+    });
+    await nextTick();
+    assert_equals(invoker.getAttribute("aria-expanded"), "false", "initial");
+    invoker.click();
+    assert_true(target.matches(":popover-open"), "opened by click");
+    await wait(10);
+    assert_equals(invoker.getAttribute("aria-expanded"), "true", "after click");
+    hover(invoker);
+    await wait(30);
+    dehover(invoker);
+    await wait(30);
+    assert_true(target.matches(":popover-open"), "popover kept open after losing interest");
+    assert_equals(invoker.getAttribute("aria-expanded"), "true", "still expanded after losing interest");
+    target.hidePopover();
+    await wait(10);
+    assert_equals(invoker.getAttribute("aria-expanded"), "false", "after hidePopover");
+
+    // Interest-shown popover that is hidden by light dismiss / script.
+    hover(invoker);
+    await wait(30);
+    assert_equals(invoker.getAttribute("aria-expanded"), "true", "after gaining interest");
+    target.hidePopover();
+    await wait(10);
+    assert_equals(invoker.getAttribute("aria-expanded"), "false", "after hiding while interest shown");
+  });
+
+  await test("Changing interestfor from a rich to a plain hint removes polyfill-managed aria-expanded", async () => {
+    const { invoker } = createPair({
+      invokerAttrs: { "aria-label": "Info" },
+      targetHTML: '<a href="#">Rich</a>',
+    });
+    const plain = document.createElement("div");
+    plain.id = "switch_plain";
+    plain.setAttribute("popover", "hint");
+    plain.textContent = "Plain description";
+    sandbox.appendChild(plain);
+    await nextTick();
+    assert_equals(invoker.getAttribute("aria-expanded"), "false", "rich -> managed");
+    invoker.setAttribute("interestfor", plain.id);
+    await nextTick();
+    assert_equals(invoker.getAttribute("aria-expanded"), null, "plain -> removed");
+    assert_equals(invoker.getAttribute("aria-describedby"), plain.id, "plain -> aria-describedby");
+  });
+
   // =========================================================================
   section("2. Element Validity & interestForElement IDL");
   // =========================================================================
@@ -295,7 +480,11 @@ async function runTests() {
   // =========================================================================
 
   await test("Hover gains interest after delay, opens popover, sets classes, and dehover loses interest", async () => {
-    const { invoker, target } = createPair({ delayStart: "20ms", delayEnd: "20ms" });
+    const { invoker, target } = createPair({
+      delayStart: "20ms",
+      delayEnd: "20ms",
+      targetHTML: '<a href="#">Rich content</a>',
+    });
     const events = [];
     target.addEventListener("interest", (e) => events.push(`interest:${e.source.tagName}`));
     target.addEventListener("loseinterest", (e) => events.push(`loseinterest:${e.source.tagName}`));

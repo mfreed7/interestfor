@@ -414,9 +414,7 @@
         invokersWithInterest.add(invoker);
         invoker.classList.add("interest-source");
         target.classList.add("interest-target");
-        if (!isPlainHint(target)) {
-          invoker.setAttribute("aria-expanded", "true");
-        }
+        syncAriaExpanded(invoker);
         if (getComputedStyle(invoker).anchorName === 'none' &&
             getComputedStyle(target).positionAnchor === 'auto') {
           const anchorName = `--interest-anchor-${Math.random()
@@ -459,6 +457,7 @@
     resetInterestState(invoker);
     if (shouldHide && isPopoverOpen(target)) {
       hideTargetPopover(invoker, target);
+      syncAriaExpanded(invoker);
     }
     return true;
   }
@@ -486,9 +485,6 @@
         target[targetDataField] = null;
         target.classList.remove("interest-target");
       }
-      if (!isPlainHint(target)) {
-        invoker.setAttribute("aria-expanded", "false");
-      }
     }
     if (data.anchorName) {
       invoker.style.anchorName = "";
@@ -499,6 +495,7 @@
     }
     data.state = InterestState.NoInterest;
     data.target = null;
+    syncAriaExpanded(invoker);
   }
 
   function hideTargetPopover(invoker, target) {
@@ -534,10 +531,9 @@
   ].join(",");
 
   // Accessibility utilities
+  // Plain vs. rich hints are distinguished by the contents of the target,
+  // regardless of the popover type.
   function isPlainHint(target) {
-    if (target.getAttribute("popover")?.toLowerCase() !== "hint") {
-      return false;
-    }
     // Anything focusable is not plain.
     if (target.querySelector(focusableSelector)) {
       return false;
@@ -553,7 +549,16 @@
     for (const el of elementsWithRoles) {
       const role = el.getAttribute("role").toLowerCase();
       // Allowed roles are those that don't add semantics for a screen reader to explore.
-      if (!["presentation", "none", "generic", "image"].includes(role)) {
+      if (
+        ![
+          "presentation",
+          "none",
+          "generic",
+          "image",
+          "tooltip",
+          "paragraph",
+        ].includes(role)
+      ) {
         return false;
       }
     }
@@ -638,13 +643,56 @@
     return normalizeText(el.getAttribute("title"));
   }
 
+  function idrefListIncludes(el, attr, id) {
+    const value = el.getAttribute(attr) || "";
+    return value.trim().split(/\s+/).includes(id);
+  }
+
+  // Returns true if `invoker` references `target` via `popovertarget` or
+  // `commandfor`, i.e. activating the invoker (also) toggles the target.
+  function activationTogglesTarget(invoker, target) {
+    const refersTo = (attr, prop) => {
+      if (prop in invoker) {
+        return invoker[prop] === target;
+      }
+      return !!target.id && invoker.getAttribute(attr) === target.id;
+    };
+    return (
+      refersTo("popovertarget", "popoverTargetElement") ||
+      refersTo("commandfor", "commandForElement")
+    );
+  }
+
+  function isLink(el) {
+    return (
+      el instanceof HTMLAnchorElement ||
+      el instanceof HTMLAreaElement ||
+      (!!window.SVGAElement && el instanceof SVGAElement)
+    );
+  }
+
+  // Sets `aria-expanded` on the invoker, if it is managed by the polyfill. For
+  // popover targets, this reflects whether the popover is open (which might
+  // be because of something other than interest, e.g. `popovertarget`). For
+  // other targets, it reflects whether the invoker has interest.
+  function syncAriaExpanded(invoker) {
+    const data = invoker[dataField];
+    if (!data || !data.managesAriaExpanded || !data.a11yTarget) {
+      return;
+    }
+    const target = data.a11yTarget;
+    const expanded = target.hasAttribute("popover")
+      ? isPopoverOpen(target)
+      : data.state !== InterestState.NoInterest && data.target === target;
+    invoker.setAttribute("aria-expanded", expanded ? "true" : "false");
+  }
+
   function setupAccessibility(invoker, target) {
     if (!target.id) {
       return;
     }
     if (isPlainHint(target)) {
-      const labelledBy = invoker.getAttribute("aria-labelledby") || "";
-      if (labelledBy.trim().split(/\s+/).includes(target.id)) {
+      if (idrefListIncludes(invoker, "aria-labelledby", target.id)) {
         return;
       }
       const name = getAccessibleName(invoker);
@@ -656,16 +704,36 @@
       } else if (
         hintText &&
         hintText !== name &&
-        !invoker.hasAttribute("aria-describedby")
+        !invoker.hasAttribute("aria-describedby") &&
+        // For toggletips, where activating the invoker reveals the hint,
+        // describing the invoker with the hint would read the hint twice.
+        !invoker.hasAttribute("aria-expanded") &&
+        !activationTogglesTarget(invoker, target)
       ) {
         invoker.setAttribute("aria-describedby", target.id);
       }
     } else {
       // Rich hint
-      if (!invoker.hasAttribute("aria-details")) {
+      const data = invoker[dataField];
+      // If the author already related the target to the invoker, don't add
+      // more relationships.
+      const authorRelated =
+        idrefListIncludes(invoker, "aria-describedby", target.id) ||
+        idrefListIncludes(invoker, "aria-labelledby", target.id);
+      if (!authorRelated && !invoker.hasAttribute("aria-details")) {
         invoker.setAttribute("aria-details", target.id);
       }
-      invoker.setAttribute("aria-expanded", "false");
+      // Don't overwrite an author-provided `aria-expanded`. Also, activating
+      // a link navigates rather than expanding the hint, so only links whose
+      // hint contains focusable content get `aria-expanded`.
+      data.managesAriaExpanded =
+        !authorRelated &&
+        !invoker.hasAttribute("aria-expanded") &&
+        (!isLink(invoker) || !!target.querySelector(focusableSelector));
+      if (data.managesAriaExpanded) {
+        target.addEventListener("toggle", data.onTargetToggle);
+        syncAriaExpanded(invoker);
+      }
       if (!target.hasAttribute("role")) {
         target.setAttribute("role", "tooltip");
       }
@@ -678,6 +746,8 @@
         state: InterestState.NoInterest,
         target: null,
         a11yTarget: null,
+        managesAriaExpanded: false,
+        onTargetToggle: () => syncAriaExpanded(el),
         gainedTimer: null,
         lostTimer: null,
         longPressTimer: null,
@@ -690,9 +760,16 @@
         },
       };
     }
+    const data = el[dataField];
     const target = GetInterestForTarget(el);
-    if (target && el[dataField].a11yTarget !== target) {
-      el[dataField].a11yTarget = target;
+    if (target && data.a11yTarget !== target) {
+      if (data.managesAriaExpanded) {
+        // Stop managing `aria-expanded` for the previous target.
+        data.a11yTarget?.removeEventListener("toggle", data.onTargetToggle);
+        el.removeAttribute("aria-expanded");
+        data.managesAriaExpanded = false;
+      }
+      data.a11yTarget = target;
       setupAccessibility(el, target);
     }
   }
