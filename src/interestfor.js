@@ -52,10 +52,10 @@
         e.stopImmediatePropagation();
       }
     };
-    document.body.addEventListener(interestEventName, cancel, {
+    document.addEventListener(interestEventName, cancel, {
       capture: true,
     });
-    document.body.addEventListener(loseInterestEventName, cancel, {
+    document.addEventListener(loseInterestEventName, cancel, {
       capture: true,
     });
   }
@@ -989,13 +989,13 @@
         touchInProgress = false;
       }
     };
-    document.body.addEventListener("pointerover", clearTouch);
-    document.body.addEventListener("pointerdown", clearTouch);
-    document.body.addEventListener("mouseover", (e) => handler(e, Source.Hover));
-    document.body.addEventListener("mouseout", (e) => handler(e, Source.DeHover));
-    document.body.addEventListener("focusin", (e) => handler(e, Source.Focus));
-    document.body.addEventListener("focusout", (e) => handler(e, Source.Blur));
-    document.body.addEventListener("keydown", (e) => {
+    document.addEventListener("pointerover", clearTouch);
+    document.addEventListener("pointerdown", clearTouch);
+    document.addEventListener("mouseover", (e) => handler(e, Source.Hover));
+    document.addEventListener("mouseout", (e) => handler(e, Source.DeHover));
+    document.addEventListener("focusin", (e) => handler(e, Source.Focus));
+    document.addEventListener("focusout", (e) => handler(e, Source.Blur));
+    document.addEventListener("keydown", (e) => {
       touchInProgress = false;
       if (e.key === "Escape" && !e.defaultPrevented) {
         // Lose interest in all invokers, most recent first. These
@@ -1034,7 +1034,7 @@
     
     // Touch support
     const longPressTime = 500;
-    document.body.addEventListener("touchstart", (e) => {
+    document.addEventListener("touchstart", (e) => {
       touchInProgress = true;
       const invoker = e.target.closest("button[interestfor]");
       if (invoker) {
@@ -1078,8 +1078,8 @@
         invoker[dataField].longPressActive = false;
       }
     };
-    document.body.addEventListener("touchmove", cancelLongPress);
-    document.body.addEventListener(
+    document.addEventListener("touchmove", cancelLongPress);
+    document.addEventListener(
       "touchend",
       (e) => {
         const invoker = e.target.closest("button[interestfor]");

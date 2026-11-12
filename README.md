@@ -140,7 +140,7 @@ browsers:
 
 
 ## Implementation
-The polyfill adds event listeners to document.body that monitor for hover
+The polyfill adds event listeners to the document that monitor for hover
 or keyboard events relevant for the `interestfor` API. When interesting
 events happen to elements with the `interestfor` attribute or elements that
 are the targets of those elements, it fires `interest` and `loseinterest`

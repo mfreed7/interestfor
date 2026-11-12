@@ -618,6 +618,41 @@ async function runTests() {
       document.body.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
     }
   });
+
+  // =========================================================================
+  section("6. Document Body Replacement (e.g. Turbo Drive)");
+  // =========================================================================
+
+  await test("Hover, focus, and Escape still work after document.body is replaced", async () => {
+    const originalBody = document.body;
+    const newBody = document.createElement("body");
+    newBody.innerHTML =
+      '<button id="swap_invoker" interestfor="swap_target">Invoker</button>' +
+      '<div id="swap_target" popover="auto">Target</div>';
+    originalBody.replaceWith(newBody);
+    try {
+      const invoker = document.getElementById("swap_invoker");
+      const target = document.getElementById("swap_target");
+      invoker.style.setProperty("--interest-delay-start", "10ms");
+      invoker.style.setProperty("--interest-delay-end", "10ms");
+      await nextTick();
+
+      hover(invoker);
+      await wait(25);
+      assert_true(target.matches(":popover-open"), "hover opens popover in replaced body");
+      dehover(invoker);
+      await wait(25);
+      assert_false(target.matches(":popover-open"), "dehover closes popover in replaced body");
+
+      focusIn(invoker);
+      await wait(25);
+      assert_true(target.matches(":popover-open"), "focus opens popover in replaced body");
+      pressEscape();
+      assert_false(target.matches(":popover-open"), "Escape closes popover in replaced body");
+    } finally {
+      newBody.replaceWith(originalBody);
+    }
+  });
 }
 </script>
 
